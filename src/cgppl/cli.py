@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from .lexer import LexerError, TokenKind, tokenize
+from .parser import ParserError, parse_program
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -17,6 +19,10 @@ def build_parser() -> argparse.ArgumentParser:
     lex_cmd.add_argument("path", type=Path)
     lex_cmd.add_argument("--json", action="store_true", help="emit machine-readable token JSON")
 
+    parse_cmd = subcommands.add_parser("parse", help="parse a CGPPL source file")
+    parse_cmd.add_argument("path", type=Path)
+    parse_cmd.add_argument("--json", action="store_true", help="emit AST JSON")
+
     return parser
 
 
@@ -24,6 +30,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.command == "lex":
         return _lex(args.path, emit_json=args.json)
+    if args.command == "parse":
+        return _parse(args.path, emit_json=args.json)
     raise AssertionError(f"unhandled command: {args.command}")
 
 
@@ -55,6 +63,25 @@ def _lex(path: Path, *, emit_json: bool) -> int:
         if token.kind is TokenKind.EOF:
             continue
         print(f"{token.start.line}:{token.start.column}\t{token.kind.name}\t{token.value}")
+    return 0
+
+
+def _parse(path: Path, *, emit_json: bool) -> int:
+    try:
+        program = parse_program(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        print(f"cgppl: cannot read {path}: {exc}")
+        return 2
+    except (LexerError, ParserError) as exc:
+        print(f"cgppl: parse error: {exc}")
+        return 1
+
+    if emit_json:
+        print(json.dumps(asdict(program), indent=2))
+    else:
+        print(f"program {program.name}")
+        print(f"rules: {len(program.rules)}")
+        print(f"body statements: {len(program.body)}")
     return 0
 
 
