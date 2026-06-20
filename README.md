@@ -10,8 +10,9 @@ This repository now contains the first incremental implementation scaffold for C
 - `src/cgppl/lexer.py`: strict lexer with source spans, comments, literals, keywords, and operators.
 - `src/cgppl/ast.py`: typed AST nodes for the first implemented subset.
 - `src/cgppl/parser.py`: recursive-descent parser for `program Name { ... }`, rule declarations, `skip`, `fail`, and rule calls.
-- `src/cgppl/cli.py`: `cgppl lex` and `cgppl parse` commands for inspecting source files.
-- `tests/`: pytest coverage for lexer and parser behavior.
+- `src/cgppl/semantics.py`: validation for duplicate rules, undefined calls, and configurable entry rule checks.
+- `src/cgppl/cli.py`: `cgppl lex`, `cgppl parse`, and `cgppl validate` commands.
+- `tests/`: pytest coverage for lexer, parser, and semantic validation behavior.
 - `examples/hello.cgppl`: minimal source file used by the CLI.
 
 ## Local development
@@ -32,11 +33,15 @@ Parse the example program:
 
     cgppl parse --json examples/hello.cgppl
 
+Validate the example program:
+
+    cgppl validate examples/hello.cgppl
+
 ## Next implementation step
 
-Add semantic validation on top of the AST:
+Add the first graph IR layer:
 
-1. collect declared rule names,
-2. reject duplicate rule declarations,
-3. reject calls to undefined rules,
-4. define which rule is the entry point, probably `main` unless the specification says otherwise.
+1. immutable node and edge records,
+2. an in-memory graph container,
+3. parser support for graph literals or graph-loading stubs,
+4. tests that apply one trivial rule to a tiny graph.
