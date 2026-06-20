@@ -1,0 +1,57 @@
+import pytest
+
+from cgppl.lexer import LexerError, TokenKind, tokenize
+
+
+def visible(tokens):
+    return [(token.kind, token.value) for token in tokens if token.kind is not TokenKind.EOF]
+
+
+def test_lexes_keywords_identifiers_literals_and_symbols():
+    tokens = tokenize('program Demo { rule main => skip; let x := 42; let s := "ok"; }')
+
+    assert visible(tokens) == [
+        (TokenKind.KEYWORD, "program"),
+        (TokenKind.IDENT, "Demo"),
+        (TokenKind.SYMBOL, "{"),
+        (TokenKind.KEYWORD, "rule"),
+        (TokenKind.KEYWORD, "main"),
+        (TokenKind.SYMBOL, "=>"),
+        (TokenKind.KEYWORD, "skip"),
+        (TokenKind.SYMBOL, ";"),
+        (TokenKind.KEYWORD, "let"),
+        (TokenKind.IDENT, "x"),
+        (TokenKind.SYMBOL, ":="),
+        (TokenKind.INTEGER, "42"),
+        (TokenKind.SYMBOL, ";"),
+        (TokenKind.KEYWORD, "let"),
+        (TokenKind.IDENT, "s"),
+        (TokenKind.SYMBOL, ":="),
+        (TokenKind.STRING, "ok"),
+        (TokenKind.SYMBOL, ";"),
+        (TokenKind.SYMBOL, "}"),
+    ]
+
+
+def test_skips_line_and_block_comments():
+    tokens = tokenize('program A // comment\n/* more */ rule r -> skip')
+    values = [token.value for token in tokens if token.kind is not TokenKind.EOF]
+    assert values == ["program", "A", "rule", "r", "->", "skip"]
+
+
+def test_tracks_line_and_column():
+    tokens = tokenize("program\n  Demo")
+    demo = tokens[1]
+    assert demo.value == "Demo"
+    assert demo.start.line == 2
+    assert demo.start.column == 3
+
+
+def test_rejects_unknown_characters():
+    with pytest.raises(LexerError):
+        tokenize("program @")
+
+
+def test_rejects_unterminated_string():
+    with pytest.raises(LexerError):
+        tokenize('"unterminated')
