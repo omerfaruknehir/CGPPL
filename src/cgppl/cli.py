@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .lexer import LexerError, TokenKind, tokenize
 from .parser import ParserError, parse_program
+from .semantics import SemanticError, validate_program
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -23,6 +24,14 @@ def build_parser() -> argparse.ArgumentParser:
     parse_cmd.add_argument("path", type=Path)
     parse_cmd.add_argument("--json", action="store_true", help="emit AST JSON")
 
+    validate_cmd = subcommands.add_parser("validate", help="parse and semantically validate a file")
+    validate_cmd.add_argument("path", type=Path)
+    validate_cmd.add_argument(
+        "--entry-point",
+        default="main",
+        help="required entry rule name; pass an empty string to disable the check",
+    )
+
     return parser
 
 
@@ -32,6 +41,9 @@ def main(argv: list[str] | None = None) -> int:
         return _lex(args.path, emit_json=args.json)
     if args.command == "parse":
         return _parse(args.path, emit_json=args.json)
+    if args.command == "validate":
+        entry_point = args.entry_point if args.entry_point else None
+        return _validate(args.path, entry_point=entry_point)
     raise AssertionError(f"unhandled command: {args.command}")
 
 
@@ -82,6 +94,21 @@ def _parse(path: Path, *, emit_json: bool) -> int:
         print(f"program {program.name}")
         print(f"rules: {len(program.rules)}")
         print(f"body statements: {len(program.body)}")
+    return 0
+
+
+def _validate(path: Path, *, entry_point: str | None) -> int:
+    try:
+        program = parse_program(path.read_text(encoding="utf-8"))
+        validate_program(program, entry_point=entry_point)
+    except OSError as exc:
+        print(f"cgppl: cannot read {path}: {exc}")
+        return 2
+    except (LexerError, ParserError, SemanticError) as exc:
+        print(f"cgppl: validation error: {exc}")
+        return 1
+
+    print("ok")
     return 0
 
 
