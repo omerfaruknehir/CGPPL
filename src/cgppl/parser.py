@@ -49,7 +49,7 @@ class Parser:
             self._expect_symbol(";")
             return FailStmt()
 
-        token = self._expect(TokenKind.IDENT)
+        token = self._expect(TokenKind.IDENT, TokenKind.KEYWORD)
         if self._match_symbol("("):
             self._expect_symbol(")")
         self._expect_symbol(";")
