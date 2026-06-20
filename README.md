@@ -8,9 +8,11 @@ This repository now contains the first incremental implementation scaffold for C
 
 - Python package metadata in `pyproject.toml`.
 - `src/cgppl/lexer.py`: strict lexer with source spans, comments, literals, keywords, and operators.
-- `src/cgppl/cli.py`: `cgppl lex` command for inspecting token streams.
-- `tests/test_lexer.py`: pytest coverage for normal tokens, comments, source positions, and lexer errors.
-- `examples/hello.cgppl`: minimal source file used by the lexer CLI.
+- `src/cgppl/ast.py`: typed AST nodes for the first implemented subset.
+- `src/cgppl/parser.py`: recursive-descent parser for `program Name { ... }`, rule declarations, `skip`, `fail`, and rule calls.
+- `src/cgppl/cli.py`: `cgppl lex` and `cgppl parse` commands for inspecting source files.
+- `tests/`: pytest coverage for lexer and parser behavior.
+- `examples/hello.cgppl`: minimal source file used by the CLI.
 
 ## Local development
 
@@ -26,14 +28,15 @@ Lex the example program:
 
     cgppl lex examples/hello.cgppl
 
-Emit JSON tokens:
+Parse the example program:
 
-    cgppl lex --json examples/hello.cgppl
+    cgppl parse --json examples/hello.cgppl
 
 ## Next implementation step
 
-Add a recursive-descent parser over the existing token stream. The next target should be a typed AST for:
+Add semantic validation on top of the AST:
 
-1. top-level `program Name { ... }`,
-2. rule declarations,
-3. basic statements such as `skip`, `fail`, sequencing with `;`, and named rule calls.
+1. collect declared rule names,
+2. reject duplicate rule declarations,
+3. reject calls to undefined rules,
+4. define which rule is the entry point, probably `main` unless the specification says otherwise.
