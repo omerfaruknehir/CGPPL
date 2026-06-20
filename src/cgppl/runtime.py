@@ -28,7 +28,12 @@ class ExecutionResult:
     graph: Graph
 
 
-def execute_program(program: Program, graph: Graph, *, entry_point: str = "main") -> ExecutionResult:
+def execute_program(
+    program: Program,
+    graph: Graph,
+    *,
+    entry_point: str = "main",
+) -> ExecutionResult:
     """Validate and execute a program entry rule against an immutable graph.
 
     The current runtime only implements control flow for `skip`, `fail`, and rule calls.
