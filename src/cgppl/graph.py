@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 
 Value = str | int | bool
 AttrItems = tuple[tuple[str, Value], ...]
+AttrInput = Mapping[str, Value] | Iterable[tuple[str, Value]] | None
 
 
 class GraphError(ValueError):
@@ -17,7 +18,7 @@ class GraphError(ValueError):
 class Node:
     id: str
     labels: Iterable[str] | None = field(default_factory=tuple)
-    attrs: Mapping[str, Value] | Iterable[tuple[str, Value]] | None = field(default_factory=tuple)
+    attrs: AttrInput = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         _require_id(self.id, "node")
@@ -42,7 +43,7 @@ class Edge:
     source: str
     target: str
     labels: Iterable[str] | None = field(default_factory=tuple)
-    attrs: Mapping[str, Value] | Iterable[tuple[str, Value]] | None = field(default_factory=tuple)
+    attrs: AttrInput = field(default_factory=tuple)
 
     def __post_init__(self) -> None:
         _require_id(self.id, "edge")
@@ -134,12 +135,14 @@ class Graph:
     def replace_node(self, node: Node) -> Graph:
         if not self.has_node(node.id):
             raise GraphError(f"missing node: {node.id}")
-        return Graph(tuple(node if existing.id == node.id else existing for existing in self.nodes), self.edges)
+        nodes = tuple(node if existing.id == node.id else existing for existing in self.nodes)
+        return Graph(nodes, self.edges)
 
     def replace_edge(self, edge: Edge) -> Graph:
         if not self.has_edge(edge.id):
             raise GraphError(f"missing edge: {edge.id}")
-        return Graph(self.nodes, tuple(edge if existing.id == edge.id else existing for existing in self.edges))
+        edges = tuple(edge if existing.id == edge.id else existing for existing in self.edges)
+        return Graph(self.nodes, edges)
 
     def remove_node(self, node_id: str) -> Graph:
         if not self.has_node(node_id):
@@ -217,7 +220,7 @@ def _normalize_labels(labels: Iterable[str] | None) -> tuple[str, ...]:
     return tuple(sorted(normalized))
 
 
-def _normalize_attrs(attrs: Mapping[str, Value] | Iterable[tuple[str, Value]] | None) -> AttrItems:
+def _normalize_attrs(attrs: AttrInput) -> AttrItems:
     if attrs is None:
         return ()
     items = attrs.items() if isinstance(attrs, Mapping) else attrs
