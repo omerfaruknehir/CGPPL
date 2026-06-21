@@ -11,11 +11,12 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - `try { ... } or { ... }` fallback blocks with rollback
 - graph requirements, including negative requirements
 - node and edge matching with labels, attributes, endpoint constraints, and `where` predicates
-- node and edge construction with one inline label plus inline attributes
+- node and edge construction with inline labels and inline attributes
+- multi-label matcher, negative-requirement, and construction clauses
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
-## Next feature slice: multi-label predicates and construction
+## Current feature slice: multi-label predicates and construction
 
 Target syntax:
 
@@ -30,15 +31,34 @@ rule main => {
 }
 ```
 
+Implementation status:
+
+1. Done: matcher, negative-requirement, and constructor AST nodes now carry normalized `labels` tuples while preserving the old `label` compatibility field.
+2. Done: parser accumulates repeated `label` clauses and rejects duplicate same-label clauses in the same predicate/constructor.
+3. Done: runtime node/edge predicate checks require every listed label to be present.
+4. Done: construction runtime applies every inline label at creation time.
+5. Done: tests cover positive multi-label node matching, edge matching, negative requirements, construction, and duplicate same-label rejection.
+6. Done: executable example and README syntax/status updates were added.
+
+## Next feature slice: variable-bound construction IDs
+
+The next likely high-value slice is allowing construction targets to come from variables. This would let rewrite rules derive new graph objects from earlier matches without hard-coded literal IDs.
+
+Target syntax:
+
+```cgppl
+rule main => {
+  match node $source label "Root";
+  add node $replacement label "Generated";
+  add edge $new_edge from $source to $replacement label "new";
+}
+```
+
 Concrete implementation steps:
 
-1. Extend matcher/constructor AST nodes from a single optional `label` to a tuple of required `labels` while preserving parser compatibility for existing one-label tests.
-2. Replace duplicate-label parser errors in matcher, negative requirement, and constructor parsing with accumulation of multiple label clauses.
-3. Update runtime node/edge predicate checks so every required label must be present.
-4. Update construction runtime so every inline label is applied at creation time.
-5. Add tests for positive multi-label node matching, edge matching, negative requirements, construction, and duplicate same-label normalization.
+1. Decide whether unbound construction variables generate IDs or whether construction variables must already be bound.
+2. Extend `AddNodeStmt.node_id` and `AddEdgeStmt.edge_id` from `str` to `GraphRef` if construction should accept bound variables.
+3. Update parser `add node` and `add edge` targets to parse graph refs instead of graph IDs.
+4. Update runtime construction to resolve variable targets before adding nodes/edges.
+5. Add parser/runtime tests for literal construction compatibility, bound-variable construction, duplicate ID errors, and unbound-variable errors.
 6. Add an executable example and update README implemented syntax.
-
-## After multi-label support
-
-The next likely high-value slice is variable-bound construction IDs or rule parameters. Multi-label support should land first because it is smaller and exercises the parser/runtime/test loop without changing binding semantics.
