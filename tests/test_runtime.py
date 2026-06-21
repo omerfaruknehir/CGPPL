@@ -51,6 +51,38 @@ def test_require_node_statement_fails_when_node_is_missing():
         execute_program(program, Graph.empty())
 
 
+def test_delete_node_statement_removes_node_and_incident_edges():
+    program = parse_program('program Demo { rule main => delete node "a"; }')
+    graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.node_ids == ("b",)
+    assert result.graph.edge_ids == ()
+    assert graph.node_ids == ("a", "b")
+    assert graph.edge_ids == ("e1",)
+
+
+def test_delete_edge_statement_removes_only_selected_edge():
+    program = parse_program("program Demo { rule main => delete edge(e1); }")
+    graph = Graph(
+        nodes=(Node("a"), Node("b")),
+        edges=(Edge("e1", "a", "b"), Edge("e2", "b", "a")),
+    )
+
+    result = execute_program(program, graph)
+
+    assert result.graph.node_ids == ("a", "b")
+    assert result.graph.edge_ids == ("e2",)
+
+
+def test_delete_node_statement_fails_when_node_is_missing():
+    program = parse_program('program Demo { rule main => delete node "missing"; }')
+
+    with pytest.raises(GraphMatchFailed, match="delete node target not found: missing"):
+        execute_program(program, Graph.empty())
+
+
 def test_fail_rule_raises_runtime_failure():
     program = parse_program("program Demo { rule main => fail; }")
 
