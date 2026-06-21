@@ -16,7 +16,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
-## Current feature slice: multi-label predicates and construction
+## Completed feature slice: multi-label predicates and construction
 
 Target syntax:
 
@@ -40,9 +40,9 @@ Implementation status:
 5. Done: tests cover positive multi-label node matching, edge matching, negative requirements, construction, and duplicate same-label rejection.
 6. Done: executable example and README syntax/status updates were added.
 
-## Next feature slice: variable-bound construction IDs
+## Current feature slice: variable-bound construction IDs
 
-The next likely high-value slice is allowing construction targets to come from variables. This would let rewrite rules derive new graph objects from earlier matches without hard-coded literal IDs.
+The next high-value slice is allowing construction targets to come from variables. This lets rewrite rules derive new graph objects from earlier matches without hard-coded literal IDs.
 
 Target syntax:
 
@@ -54,11 +54,18 @@ rule main => {
 }
 ```
 
-Concrete implementation steps:
+Design decision:
 
-1. Decide whether unbound construction variables generate IDs or whether construction variables must already be bound.
-2. Extend `AddNodeStmt.node_id` and `AddEdgeStmt.edge_id` from `str` to `GraphRef` if construction should accept bound variables.
-3. Update parser `add node` and `add edge` targets to parse graph refs instead of graph IDs.
-4. Update runtime construction to resolve variable targets before adding nodes/edges.
-5. Add parser/runtime tests for literal construction compatibility, bound-variable construction, duplicate ID errors, and unbound-variable errors.
-6. Add an executable example and update README implemented syntax.
+- Literal construction IDs keep the existing behavior.
+- Bound construction variables resolve to their existing binding.
+- Unbound construction variables should generate deterministic fresh IDs from the variable name, then bind the variable for later statements. For example, `$replacement` first tries `replacement`; if that ID already exists, it tries `replacement_2`, `replacement_3`, and so on.
+- Node construction variables must avoid existing node IDs. Edge construction variables must avoid existing edge IDs.
+
+Implementation status:
+
+1. Done: decided unbound construction variables generate deterministic fresh IDs rather than requiring prior bindings.
+2. Done: `AddNodeStmt.node_id` and `AddEdgeStmt.edge_id` were widened from `str` to `GraphRef`.
+3. Next: update parser `add node` and `add edge` targets to parse graph refs instead of graph IDs.
+4. Pending: update runtime construction to resolve/generate construction IDs and bind generated variables.
+5. Pending: add parser/runtime tests for literal construction compatibility, generated IDs, collision suffixing, duplicate bound IDs, and unbound source/target errors.
+6. Pending: add an executable example and update README implemented syntax.
