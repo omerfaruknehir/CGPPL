@@ -66,6 +66,39 @@ def test_add_edge_constructs_labels_and_attributes_in_one_statement():
     )
 
 
+def test_constructed_node_can_be_matched_required_and_deleted_in_same_block():
+    program = parse_program(
+        'program Demo { rule main => { '
+        'add node "tmp" label "Generated" attr "kind" = "generated"; '
+        'match node $n label "Generated" attr "kind" = "generated"; '
+        'require node $n label "Generated"; '
+        'delete node $n; '
+        'require no node "tmp"; '
+        '} }'
+    )
+
+    result = execute_program(program, Graph.empty())
+
+    assert result.graph.node_ids == ()
+
+
+def test_constructed_edge_can_be_matched_required_and_deleted_in_same_block():
+    program = parse_program(
+        'program Demo { rule main => { '
+        'add edge "tmp-edge" from "a" to "b" label "GeneratedEdge" attr "weight" = 1; '
+        'match edge $e from "a" to "b" label "GeneratedEdge" attr "weight" = 1; '
+        'require edge $e label "GeneratedEdge"; '
+        'delete edge $e; '
+        'require no edge "tmp-edge"; '
+        '} }'
+    )
+    graph = Graph(nodes=(Node("a"), Node("b")))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.edge_ids == ()
+
+
 def test_rejects_duplicate_inline_construction_attribute():
     with pytest.raises(ParserError, match="duplicate attribute matcher"):
         parse_program(
