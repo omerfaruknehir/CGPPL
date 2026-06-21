@@ -113,24 +113,27 @@ class Lexer:
         tokens: list[Token] = []
         while not self._at_end():
             self._skip_space_and_comments()
-            if not self._at_end():
-                tokens.append(self._next_token())
-        end = self._pos()
-        tokens.append(Token(TokenKind.EOF, "", end, end))
+            if self._at_end():
+                break
+            tokens.append(self._next_token())
+
+        pos = self._pos()
+        tokens.append(Token(TokenKind.EOF, "", pos, pos))
         return tokens
 
     def _next_token(self) -> Token:
-        if self._peek().isalpha() or self._peek() == "_":
+        ch = self._peek()
+        if ch.isalpha() or ch == "_":
             return self._identifier_or_keyword()
-        if self._peek().isdigit():
+        if ch.isdigit():
             return self._integer()
-        if self._peek() == '"':
+        if ch == '"':
             return self._string()
         return self._symbol()
 
     def _identifier_or_keyword(self) -> Token:
         start = self._pos()
-        value = self._consume_while(lambda ch: ch.isalnum() or ch == "_")
+        value = self._consume_while(lambda c: c.isalnum() or c == "_")
         kind = TokenKind.KEYWORD if value in KEYWORDS else TokenKind.IDENT
         return Token(kind, value, start, self._pos())
 
@@ -141,7 +144,7 @@ class Lexer:
 
     def _string(self) -> Token:
         start = self._pos()
-        self._advance()
+        self._advance()  # opening quote
         chars: list[str] = []
         while not self._at_end():
             ch = self._advance()
