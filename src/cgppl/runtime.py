@@ -223,13 +223,18 @@ def _execute_statement(
         raise GraphMatchFailed(f"delete edge target not found: {edge_id} in rule {_location(call_stack)}")
     if isinstance(statement, AddNodeStmt):
         labels = (statement.label,) if statement.label is not None else ()
-        return _ExecutionState(graph.add_node(Node(statement.node_id, labels=labels)), state.bindings)
+        attrs = _attrs_from_predicates(statement.attrs)
+        return _ExecutionState(
+            graph.add_node(Node(statement.node_id, labels=labels, attrs=attrs)),
+            state.bindings,
+        )
     if isinstance(statement, AddEdgeStmt):
         source_id = _resolve_ref(statement.source_id, state.bindings, "edge source", call_stack)
         target_id = _resolve_ref(statement.target_id, state.bindings, "edge target", call_stack)
         labels = (statement.label,) if statement.label is not None else ()
+        attrs = _attrs_from_predicates(statement.attrs)
         return _ExecutionState(
-            graph.add_edge(Edge(statement.edge_id, source_id, target_id, labels=labels)),
+            graph.add_edge(Edge(statement.edge_id, source_id, target_id, labels=labels, attrs=attrs)),
             state.bindings,
         )
     if isinstance(statement, SetNodeAttrStmt):
@@ -534,6 +539,10 @@ def _attrs_match(item: Node | Edge, predicates: tuple[AttrPredicate, ...]) -> bo
         if not _values_equal(item.attr(predicate.name), predicate.value):
             return False
     return True
+
+
+def _attrs_from_predicates(predicates: tuple[AttrPredicate, ...]) -> tuple[tuple[str, LiteralValue], ...]:
+    return tuple((predicate.name, predicate.value) for predicate in predicates)
 
 
 def _where_predicates_match(
