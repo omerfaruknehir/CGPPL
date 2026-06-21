@@ -33,6 +33,21 @@ def test_lexes_keywords_identifiers_literals_and_symbols():
     ]
 
 
+def test_lexes_graph_construction_keywords():
+    tokens = tokenize('add edge "e1" from "a" to "b";')
+
+    assert visible(tokens) == [
+        (TokenKind.KEYWORD, "add"),
+        (TokenKind.KEYWORD, "edge"),
+        (TokenKind.STRING, "e1"),
+        (TokenKind.KEYWORD, "from"),
+        (TokenKind.STRING, "a"),
+        (TokenKind.KEYWORD, "to"),
+        (TokenKind.STRING, "b"),
+        (TokenKind.SYMBOL, ";"),
+    ]
+
+
 def test_skips_line_and_block_comments():
     tokens = tokenize('program A // comment\n/* more */ rule r -> skip')
     values = [token.value for token in tokens if token.kind is not TokenKind.EOF]
