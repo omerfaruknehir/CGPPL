@@ -1,0 +1,6 @@
+program WhereVars {
+  rule main => {
+    match edge $e from $a to $b where $a != $b;
+    set edge $e label "NonLoop";
+  }
+}
