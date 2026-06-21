@@ -112,6 +112,45 @@ def test_add_edge_statement_rejects_missing_endpoint():
         execute_program(program, graph)
 
 
+def test_set_node_attr_statement_replaces_node_attr():
+    program = parse_program('program Demo { rule main => set node "a" attr "kind" = "new"; }')
+    graph = Graph.empty().add_node(Node("a", attrs={"kind": "old"}))
+
+    result = execute_program(program, graph)
+
+    assert graph.get_node("a").attr("kind") == "old"
+    assert result.graph.get_node("a").attr("kind") == "new"
+
+
+def test_set_edge_attr_statement_replaces_edge_attr():
+    program = parse_program('program Demo { rule main => set edge "e1" attr "weight" = 3; }')
+    graph = Graph(
+        nodes=(Node("a"), Node("b")),
+        edges=(Edge("e1", "a", "b", attrs={"weight": 1}),),
+    )
+
+    result = execute_program(program, graph)
+
+    assert graph.get_edge("e1").attr("weight") == 1
+    assert result.graph.get_edge("e1").attr("weight") == 3
+
+
+def test_set_node_attr_statement_supports_boolean_values():
+    program = parse_program('program Demo { rule main => set node "a" attr "active" = false; }')
+    graph = Graph.empty().add_node(Node("a"))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.get_node("a").attr("active") is False
+
+
+def test_set_node_attr_statement_fails_when_node_is_missing():
+    program = parse_program('program Demo { rule main => set node "missing" attr "kind" = "new"; }')
+
+    with pytest.raises(GraphMatchFailed, match="set node target not found: missing"):
+        execute_program(program, Graph.empty())
+
+
 def test_block_statement_threads_graph_updates_in_order():
     program = parse_program(
         'program Demo { rule main => { require node "a"; delete node "a"; require node "b"; } }'
@@ -135,6 +174,19 @@ def test_block_statement_can_delete_and_construct_graph_structure():
     assert result.graph.node_ids == ("b", "c")
     assert result.graph.edge_ids == ("e2",)
     assert result.graph.get_edge("e2") == Edge("e2", "b", "c")
+
+
+def test_block_statement_can_construct_and_annotate_graph_structure():
+    program = parse_program(
+        'program Demo { rule main => { add node "c"; set node "c" attr "kind" = "created"; '
+        'add edge "e2" from "b" to "c"; set edge "e2" attr "weight" = 2; } }'
+    )
+    graph = Graph.empty().add_node(Node("b"))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.get_node("c").attr("kind") == "created"
+    assert result.graph.get_edge("e2").attr("weight") == 2
 
 
 def test_block_statement_stops_at_first_failure():
