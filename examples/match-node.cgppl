@@ -1,0 +1,7 @@
+program MatchNode {
+  rule main => {
+    match node $n label "Root";
+    set node $n label "Matched";
+    delete node $n;
+  }
+}
