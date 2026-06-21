@@ -171,3 +171,27 @@ class SetNodeLabelStmt:
 class SetEdgeLabelStmt:
     edge_id: GraphRef
     label: str
+
+
+@dataclass(frozen=True, slots=True)
+class UnsetNodeAttrStmt:
+    node_id: GraphRef
+    attr_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class UnsetEdgeAttrStmt:
+    edge_id: GraphRef
+    attr_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class UnsetNodeLabelStmt:
+    node_id: GraphRef
+    label: str
+
+
+@dataclass(frozen=True, slots=True)
+class UnsetEdgeLabelStmt:
+    edge_id: GraphRef
+    label: str
