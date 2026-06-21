@@ -19,6 +19,11 @@ class RuleDecl:
 
 
 @dataclass(frozen=True, slots=True)
+class BlockStmt:
+    statements: tuple[object, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class SkipStmt:
     pass
 
