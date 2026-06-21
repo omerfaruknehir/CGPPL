@@ -3,6 +3,7 @@ import pytest
 from cgppl.ast import (
     AddEdgeStmt,
     AddNodeStmt,
+    AttrPredicate,
     BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
@@ -91,6 +92,26 @@ def test_parses_node_match_and_variable_reference():
     )
 
 
+def test_parses_node_match_with_attribute_predicate():
+    program = parse_program(
+        'program Demo { rule main => match node $n label "Root" attr "kind" = "root"; }'
+    )
+
+    assert program.rules[0].body == MatchNodeStmt(
+        VarRef("n"), "Root", (AttrPredicate("kind", "root"),)
+    )
+
+
+def test_parses_node_match_with_multiple_attribute_predicates():
+    program = parse_program(
+        'program Demo { rule main => match node $n attr(kind) = "root" attr(active) = true; }'
+    )
+
+    assert program.rules[0].body == MatchNodeStmt(
+        VarRef("n"), None, (AttrPredicate("kind", "root"), AttrPredicate("active", True))
+    )
+
+
 def test_parses_edge_match_with_endpoint_variables():
     program = parse_program(
         'program Demo { rule main => { match edge $e from $a to "b" label "link"; '
@@ -104,6 +125,26 @@ def test_parses_edge_match_with_endpoint_variables():
             DeleteEdgeStmt(VarRef("e")),
         )
     )
+
+
+def test_parses_edge_match_with_attribute_predicates():
+    program = parse_program(
+        'program Demo { rule main => match edge $e from $a to $b label "link" '
+        'attr "weight" = 1 attr(active) = true; }'
+    )
+
+    assert program.rules[0].body == MatchEdgeStmt(
+        VarRef("e"),
+        VarRef("a"),
+        VarRef("b"),
+        "link",
+        (AttrPredicate("weight", 1), AttrPredicate("active", True)),
+    )
+
+
+def test_rejects_duplicate_match_attribute_predicate():
+    with pytest.raises(ParserError, match="duplicate attribute matcher"):
+        parse_program('program Demo { rule main => match node $n attr "kind" = "a" attr(kind) = "b"; }')
 
 
 def test_rejects_match_node_without_variable():
