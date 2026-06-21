@@ -129,6 +129,34 @@ def test_run_command_can_delete_and_construct_graph_contents(tmp_path, capsys):
     }
 
 
+def test_run_command_can_set_graph_attributes(tmp_path, capsys):
+    source_path = tmp_path / "set-attrs.cgppl"
+    source_path.write_text(
+        'program Annotate { rule main => { require node "n2"; add node "n3"; '
+        'set node "n3" attr "kind" = "replacement"; '
+        'add edge "e2" from "n2" to "n3"; set edge "e2" attr "weight" = 1; } }',
+        encoding="utf-8",
+    )
+
+    graph_payload = {"nodes": [{"id": "n2"}], "edges": []}
+    graph_path = tmp_path / "graph.json"
+    graph_path.write_text(json.dumps(graph_payload), encoding="utf-8")
+
+    exit_code = main(["run", str(source_path), "--graph", str(graph_path), "--compact"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert json.loads(captured.out) == {
+        "nodes": [
+            {"id": "n2", "labels": [], "attrs": {}},
+            {"id": "n3", "labels": [], "attrs": {"kind": "replacement"}},
+        ],
+        "edges": [
+            {"id": "e2", "source": "n2", "target": "n3", "labels": [], "attrs": {"weight": 1}}
+        ],
+    }
+
+
 def test_run_command_reports_failed_graph_requirement(tmp_path, capsys):
     source_path = tmp_path / "require-node.cgppl"
     source_path.write_text('program Check { rule main => require node "missing"; }', encoding="utf-8")
