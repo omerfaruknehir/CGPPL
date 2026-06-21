@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .ast import (
+    AddEdgeStmt,
+    AddNodeStmt,
     BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
@@ -16,7 +18,7 @@ from .ast import (
     RuleDecl,
     SkipStmt,
 )
-from .graph import Graph
+from .graph import Edge, Graph, Node
 from .semantics import validate_program
 
 
@@ -52,9 +54,10 @@ def execute_program(
     """Validate and execute a program entry rule against an immutable graph.
 
     The current runtime implements control flow, ID-based graph inspection,
-    ID-based graph mutations, and sequential statement blocks. It still keeps
-    all graph updates immutable so the integration point remains stable for
-    later pattern matching and rewrite semantics.
+    ID-based graph mutations, graph construction statements, and sequential
+    statement blocks. It still keeps all graph updates immutable so the
+    integration point remains stable for later pattern matching and rewrite
+    semantics.
     """
 
     return ExecutionResult(
@@ -125,6 +128,10 @@ def _execute_statement(
         raise GraphMatchFailed(
             f"delete edge target not found: {statement.edge_id} in rule {_location(call_stack)}"
         )
+    if isinstance(statement, AddNodeStmt):
+        return graph.add_node(Node(statement.node_id))
+    if isinstance(statement, AddEdgeStmt):
+        return graph.add_edge(Edge(statement.edge_id, statement.source_id, statement.target_id))
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, graph, call_stack=call_stack)
     raise RuntimeFailure(f"unsupported statement: {statement!r}")
