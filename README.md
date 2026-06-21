@@ -8,13 +8,13 @@ This repository now contains the first incremental implementation scaffold for C
 
 - Python package metadata in `pyproject.toml`.
 - `src/cgppl/lexer.py`: strict lexer with source spans, comments, literals, keywords, operators, graph-construction keywords, graph-attribute keywords, graph-label keywords, and `$` graph-variable tokens.
-- `src/cgppl/ast.py`: typed AST nodes for the first implemented subset, including sequential statement blocks, graph construction statements, graph attribute requirement statements, graph attribute mutation statements, graph label requirement statements, graph label mutation statements, and graph match-variable statements.
-- `src/cgppl/parser.py`: recursive-descent parser for `program Name { ... }`, rule declarations, `skip`, `fail`, rule calls, graph requirement statements, graph attribute and label requirement statements, graph match-variable statements, graph delete statements, graph add statements, graph attribute and label set statements, and brace-delimited statement blocks.
-- `src/cgppl/semantics.py`: validation for duplicate rules, undefined calls, nested calls inside blocks, and configurable entry rule checks.
+- `src/cgppl/ast.py`: typed AST nodes for the first implemented subset, including sequential statement blocks, try-or fallback statements, graph construction statements, graph attribute requirement statements, graph attribute mutation statements, graph label requirement statements, graph label mutation statements, and graph match-variable statements.
+- `src/cgppl/parser.py`: recursive-descent parser for `program Name { ... }`, rule declarations, `skip`, `fail`, rule calls, graph requirement statements, graph attribute and label requirement statements, graph match-variable statements, graph delete statements, graph add statements, graph attribute and label set statements, brace-delimited statement blocks, and `try { ... } or { ... }` fallback statements.
+- `src/cgppl/semantics.py`: validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
 - `src/cgppl/graph.py`: immutable graph IR with node/edge records, endpoint validation, graph updates, label helpers, attribute updates, and dict serialization.
-- `src/cgppl/runtime.py`: minimal runtime for `skip`, `fail`, rule-call dispatch, `require node` / `require edge` graph inspection, `require ... attr ... = ...` graph attribute predicates, `require ... label ...` graph label predicates, `match node` / `match edge` variable binding, `delete node` / `delete edge` graph mutation, `add node` / `add edge` graph construction with optional labels and variable endpoints, `set node attr` / `set edge attr` graph attribute mutation, `set node label` / `set edge label` graph label mutation, and sequential block execution.
+- `src/cgppl/runtime.py`: minimal runtime for `skip`, `fail`, rule-call dispatch, `require node` / `require edge` graph inspection, `require ... attr ... = ...` graph attribute predicates, `require ... label ...` graph label predicates, `match node` / `match edge` variable binding, `delete node` / `delete edge` graph mutation, `add node` / `add edge` graph construction with optional labels and variable endpoints, `set node attr` / `set edge attr` graph attribute mutation, `set node label` / `set edge label` graph label mutation, sequential block execution, and branch-local try-or fallback execution.
 - `src/cgppl/cli.py`: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run` commands.
-- `tests/`: pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime dispatch, graph inspection, graph attribute inspection, graph label inspection, graph mutation, graph construction, graph label mutation, graph attribute mutation, match-variable binding, sequential execution, and CLI graph execution.
+- `tests/`: pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime dispatch, graph inspection, graph attribute inspection, graph label inspection, graph mutation, graph construction, graph label mutation, graph attribute mutation, match-variable binding, sequential execution, try-or fallback execution, and CLI graph execution.
 - `examples/hello.cgppl`: minimal source file used by the CLI.
 - `examples/require-node.cgppl`: graph-inspection example requiring node `n1`.
 - `examples/require-attrs.cgppl`: graph-attribute inspection example requiring node and edge attributes.
@@ -24,6 +24,7 @@ This repository now contains the first incremental implementation scaffold for C
 - `examples/set-attrs.cgppl`: graph-attribute example that constructs `n3`, connects `n2 -> n3`, and writes node/edge attributes.
 - `examples/label-rewrite.cgppl`: graph-label example that requires labels, adds labels, and creates labeled graph structure.
 - `examples/match-node.cgppl`: graph-variable example that matches a labeled node, mutates it by variable reference, and deletes it.
+- `examples/try-fallback.cgppl`: try-or fallback example that rolls back a failed first branch and commits a second matching branch.
 - `examples/tiny-graph.json`: minimal graph input for `cgppl run`, including sample labels and attributes.
 
 ## Local development
@@ -84,6 +85,10 @@ Run the match-variable example against a graph:
 
     cgppl run examples/match-node.cgppl --graph examples/tiny-graph.json --compact
 
+Run the try-or fallback example against a graph:
+
+    cgppl run examples/try-fallback.cgppl --graph examples/tiny-graph.json --compact
+
 Use the graph/runtime API from Python:
 
     from cgppl.graph import Graph, Node
@@ -140,6 +145,16 @@ A rule body can also be a brace-delimited sequence:
       delete node $n;
     }
 
+A rule body can use a fallback branch:
+
+    rule main => try {
+      match node $n label "Preferred";
+      set node $n label "Selected";
+    } or {
+      match node $n label "Fallback";
+      set node $n label "SelectedFallback";
+    }
+
 `require node` and `require edge` are runtime graph inspections. They leave the graph unchanged when the required item exists and fail the rule when it does not. Their target ID may be a literal ID or a previously bound `$variable`.
 
 `require node ... attr ... = ...` and `require edge ... attr ... = ...` are runtime graph attribute predicates. Values currently support strings, integers, and booleans. Attribute comparisons are type-sensitive, so `true` and `1` are not treated as equal.
@@ -158,11 +173,13 @@ A rule body can also be a brace-delimited sequence:
 
 Sequential blocks run each child statement in order and thread the immutable graph result and variable bindings from one statement into the next. Execution stops at the first failing statement.
 
+`try { ... } or { ... }` executes the first branch against the current graph and bindings. If it succeeds, that result is committed and the second branch is skipped. If it fails with a rule failure or match failure, the first branch graph and bindings are discarded, then the second branch runs from the original state. If both branches fail, the whole statement fails.
+
 ## Next implementation step
 
-Add basic alternation/backtracking around match failures so programs can express fallback rewrites instead of failing immediately:
+Add real backtracking across match candidates inside a branch:
 
-1. introduce a minimal syntax such as `try { ... } or { ... }`,
-2. snapshot graph plus variable bindings for each branch,
-3. run the first successful branch and discard failed branch state,
-4. add tests where the first pattern does not match but a second branch does.
+1. collect all matching node or edge candidates instead of committing only the first match,
+2. run the rest of the sequence against each candidate snapshot,
+3. commit the first full sequence that succeeds,
+4. add tests where the first candidate matches the local predicate but fails a later statement while a later candidate succeeds.
