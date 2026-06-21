@@ -8,6 +8,8 @@ from cgppl.ast import (
     DeleteEdgeStmt,
     DeleteNodeStmt,
     FailStmt,
+    MatchEdgeStmt,
+    MatchNodeStmt,
     RequireEdgeAttrStmt,
     RequireEdgeLabelStmt,
     RequireEdgeStmt,
@@ -19,6 +21,7 @@ from cgppl.ast import (
     SetNodeAttrStmt,
     SetNodeLabelStmt,
     SkipStmt,
+    VarRef,
 )
 from cgppl.parser import ParserError, parse_program
 
@@ -78,6 +81,36 @@ def test_parses_graph_label_requirement_statements():
     assert program.body == (RequireEdgeLabelStmt("e1", "link"),)
 
 
+def test_parses_node_match_and_variable_reference():
+    program = parse_program(
+        'program Demo { rule main => { match node $n label "Root"; delete node $n; } }'
+    )
+
+    assert program.rules[0].body == BlockStmt(
+        (MatchNodeStmt(VarRef("n"), "Root"), DeleteNodeStmt(VarRef("n")))
+    )
+
+
+def test_parses_edge_match_with_endpoint_variables():
+    program = parse_program(
+        'program Demo { rule main => { match edge $e from $a to "b" label "link"; '
+        'require node $a; delete edge $e; } }'
+    )
+
+    assert program.rules[0].body == BlockStmt(
+        (
+            MatchEdgeStmt(VarRef("e"), VarRef("a"), "b", "link"),
+            RequireNodeStmt(VarRef("a")),
+            DeleteEdgeStmt(VarRef("e")),
+        )
+    )
+
+
+def test_rejects_match_node_without_variable():
+    with pytest.raises(ParserError, match="expected symbol"):
+        parse_program('program Demo { rule main => match node "n1" label "Root"; }')
+
+
 def test_parses_graph_delete_statements():
     program = parse_program(
         'program Demo { rule main => delete node "n1"; delete edge(e1); }'
@@ -104,6 +137,16 @@ def test_parses_graph_add_statements_with_labels():
 
     assert program.rules[0].body == AddNodeStmt("n3", "Replacement")
     assert program.body == (AddEdgeStmt("e2", "n2", "n3", "link"),)
+
+
+def test_parses_graph_add_edge_with_variable_endpoint():
+    program = parse_program(
+        'program Demo { rule main => { match node $n label "Root"; add edge "e2" from $n to "n3"; } }'
+    )
+
+    assert program.rules[0].body == BlockStmt(
+        (MatchNodeStmt(VarRef("n"), "Root"), AddEdgeStmt("e2", VarRef("n"), "n3"))
+    )
 
 
 def test_parses_graph_attribute_set_statements():
