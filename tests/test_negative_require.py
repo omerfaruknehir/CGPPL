@@ -109,10 +109,14 @@ def test_negative_requirements_do_not_bind_variables_when_they_pass():
         'program Demo { rule main => { require no node $n label "Excluded"; '
         'match node $n label "Allowed"; } }'
     )
-
     assert program.rules[0].body == BlockStmt(
         (
             RequireNoNodeStmt(VarRef("n"), "Excluded"),
             MatchNodeStmt(VarRef("n"), "Allowed"),
         )
     )
+
+    graph = Graph(nodes=(Node("wrong", labels=["Other"]), Node("chosen", labels=["Allowed"])))
+    result = execute_program(program, graph)
+
+    assert result.graph is graph
