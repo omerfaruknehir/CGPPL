@@ -1,0 +1,3 @@
+program Check {
+  rule main => require node "n1";
+}
