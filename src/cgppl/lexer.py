@@ -35,6 +35,7 @@ KEYWORDS = frozenset(
         "skip",
         "fail",
         "require",
+        "delete",
         "break",
         "return",
         "let",
