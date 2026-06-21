@@ -1,0 +1,6 @@
+program CheckAttrs {
+  rule main => {
+    require node "n1" attr "kind" = "root";
+    require edge "e1" attr "weight" = 1;
+  }
+}
