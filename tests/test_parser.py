@@ -10,6 +10,8 @@ from cgppl.ast import (
     FailStmt,
     RequireEdgeStmt,
     RequireNodeStmt,
+    SetEdgeAttrStmt,
+    SetNodeAttrStmt,
     SkipStmt,
 )
 from cgppl.parser import ParserError, parse_program
@@ -55,6 +57,27 @@ def test_parses_graph_add_statements():
 
     assert program.rules[0].body == AddNodeStmt("n3")
     assert program.body == (AddEdgeStmt("e2", "n2", "n3"),)
+
+
+def test_parses_graph_attribute_set_statements():
+    program = parse_program(
+        'program Demo { rule main => set node "n3" attr "kind" = "replacement"; '
+        'set edge(e2) attr(weight) = 1; }'
+    )
+
+    assert program.rules[0].body == SetNodeAttrStmt("n3", "kind", "replacement")
+    assert program.body == (SetEdgeAttrStmt("e2", "weight", 1),)
+
+
+def test_parses_boolean_attribute_values():
+    program = parse_program('program Demo { rule main => set node(n1) attr(active) = true; }')
+
+    assert program.rules[0].body == SetNodeAttrStmt("n1", "active", True)
+
+
+def test_rejects_non_literal_attribute_value():
+    with pytest.raises(ParserError, match="expected literal value"):
+        parse_program('program Demo { rule main => set node "n1" attr "kind" = helper; }')
 
 
 def test_parses_block_rule_body():
