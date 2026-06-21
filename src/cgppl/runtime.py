@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from .ast import (
     AddEdgeStmt,
     AddNodeStmt,
+    AttrPredicate,
     BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
@@ -86,10 +87,11 @@ def execute_program(
     The current runtime implements control flow, ID-based graph inspection,
     ID-based graph mutations, graph construction statements, graph attribute
     predicates/mutations, graph label predicates/mutations, pattern-variable
-    matching for node and edge IDs, sequential statement blocks, try-or fallback
-    execution, and backtracking across match candidates inside statement blocks.
-    It still keeps all graph updates immutable so the integration point remains
-    stable for later full pattern matching and rewrite semantics.
+    matching for node and edge IDs with inline label/attribute constraints,
+    sequential statement blocks, try-or fallback execution, and backtracking
+    across match candidates inside statement blocks. It still keeps all graph
+    updates immutable so the integration point remains stable for later full
+    pattern matching and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -417,11 +419,15 @@ def _iter_match_edge_states(
 
 
 def _node_matches(node: Node, statement: MatchNodeStmt) -> bool:
-    return statement.label is None or node.has_label(statement.label)
+    if statement.label is not None and not node.has_label(statement.label):
+        return False
+    return _attrs_match(node, statement.attrs)
 
 
 def _match_edge_candidate(statement: MatchEdgeStmt, edge: Edge, state: _ExecutionState) -> _BindOutcome:
     if statement.label is not None and not edge.has_label(statement.label):
+        return _BindOutcome(False, state)
+    if not _attrs_match(edge, statement.attrs):
         return _BindOutcome(False, state)
 
     current = state
@@ -436,6 +442,13 @@ def _match_edge_candidate(statement: MatchEdgeStmt, edge: Edge, state: _Executio
             return target
         current = target.state
     return _BindOutcome(True, current)
+
+
+def _attrs_match(item: Node | Edge, predicates: tuple[AttrPredicate, ...]) -> bool:
+    for predicate in predicates:
+        if not _values_equal(item.attr(predicate.name), predicate.value):
+            return False
+    return True
 
 
 def _resolve_ref(
