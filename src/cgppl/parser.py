@@ -228,9 +228,7 @@ class Parser:
                         f"in negative edge requirement at {token.location()}"
                     )
             self._expect_symbol(";")
-            return RequireNoEdgeStmt(
-                edge_id, source_id, target_id, label, tuple(attrs), tuple(where)
-            )
+            return RequireNoEdgeStmt(edge_id, source_id, target_id, label, tuple(attrs), tuple(where))
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'require no' at {token.location()}")
 
@@ -312,18 +310,16 @@ class Parser:
     def _parse_add_statement(self) -> object:
         if self._match_keyword("node"):
             node_id = self._parse_graph_id()
-            label = self._parse_optional_label()
-            self._expect_symbol(";")
-            return AddNodeStmt(node_id, label)
+            label, attrs = self._parse_constructor_annotations("node constructor")
+            return AddNodeStmt(node_id, label, attrs)
         if self._match_keyword("edge"):
             edge_id = self._parse_graph_id()
             self._expect_keyword("from")
             source_id = self._parse_graph_ref()
             self._expect_keyword("to")
             target_id = self._parse_graph_ref()
-            label = self._parse_optional_label()
-            self._expect_symbol(";")
-            return AddEdgeStmt(edge_id, source_id, target_id, label)
+            label, attrs = self._parse_constructor_annotations("edge constructor")
+            return AddEdgeStmt(edge_id, source_id, target_id, label, attrs)
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'add' at {token.location()}")
 
@@ -391,6 +387,24 @@ class Parser:
         if self._match_keyword("label"):
             return self._parse_graph_id()
         return None
+
+    def _parse_constructor_annotations(self, context: str) -> tuple[str | None, tuple[AttrPredicate, ...]]:
+        label: str | None = None
+        attrs: list[AttrPredicate] = []
+        attr_names: set[str] = set()
+        while not self._check_symbol(";"):
+            if self._match_keyword("label"):
+                if label is not None:
+                    token = self._peek()
+                    raise ParserError(f"duplicate {context} label at {token.location()}")
+                label = self._parse_graph_id()
+            elif self._match_keyword("attr"):
+                attrs.append(self._parse_attr_predicate(attr_names, context))
+            else:
+                token = self._peek()
+                raise ParserError(f"expected 'label', 'attr', or ';' in {context} at {token.location()}")
+        self._expect_symbol(";")
+        return label, tuple(attrs)
 
     def _parse_attr_predicate(self, seen_names: set[str], context: str) -> AttrPredicate:
         attr_name = self._parse_graph_id()
