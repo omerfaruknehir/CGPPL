@@ -29,6 +29,7 @@ from .ast import (
     SetNodeAttrStmt,
     SetNodeLabelStmt,
     SkipStmt,
+    TryOrStmt,
     VarRef,
 )
 from .graph import Edge, Graph, Node
@@ -84,9 +85,10 @@ def execute_program(
     The current runtime implements control flow, ID-based graph inspection,
     ID-based graph mutations, graph construction statements, graph attribute
     predicates/mutations, graph label predicates/mutations, pattern-variable
-    matching for node and edge IDs, and sequential statement blocks. It still
-    keeps all graph updates immutable so the integration point remains stable
-    for later pattern matching and rewrite semantics.
+    matching for node and edge IDs, sequential statement blocks, and basic
+    try-or fallback execution. It still keeps all graph updates immutable so
+    the integration point remains stable for later full pattern matching and
+    rewrite semantics.
     """
 
     return ExecutionResult(
@@ -130,6 +132,8 @@ def _execute_statement(
         for child in statement.statements:
             current = _execute_statement(child, rules, current, call_stack=call_stack)
         return current
+    if isinstance(statement, TryOrStmt):
+        return _execute_try_or(statement, rules, state, call_stack=call_stack)
     if isinstance(statement, SkipStmt):
         return state
     if isinstance(statement, FailStmt):
@@ -265,6 +269,25 @@ def _execute_statement(
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, state, call_stack=call_stack)
     raise RuntimeFailure(f"unsupported statement: {statement!r}")
+
+
+def _execute_try_or(
+    statement: TryOrStmt,
+    rules: dict[str, RuleDecl],
+    state: _ExecutionState,
+    *,
+    call_stack: tuple[str, ...],
+) -> _ExecutionState:
+    try:
+        return _execute_statement(statement.first, rules, state, call_stack=call_stack)
+    except RuleFailed as first_error:
+        try:
+            return _execute_statement(statement.second, rules, state, call_stack=call_stack)
+        except RuleFailed as second_error:
+            raise RuleFailed(
+                "all try-or branches failed in rule "
+                f"{_location(call_stack)}; first: {first_error}; second: {second_error}"
+            ) from second_error
 
 
 def _execute_match_node(
