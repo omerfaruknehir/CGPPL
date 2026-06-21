@@ -13,9 +13,9 @@ Implemented pieces:
 - Recursive-descent parser for `program Name { ... }`, rule declarations, rule calls, `skip`, `fail`, sequential blocks, and `try { ... } or { ... }` fallback blocks.
 - Immutable graph IR with node/edge records, labels, attributes, endpoint validation, serialization, and immutable update/removal helpers.
 - Semantic validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
-- Runtime support for graph inspection, graph mutation, graph construction, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, and negative graph requirements.
+- Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, and negative graph requirements.
 - CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
-- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, `where` predicate filtering, `where` variable operands, and negative graph requirements.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, `where` predicate filtering, `where` variable operands, and negative graph requirements.
 
 ## Local development
 
@@ -40,6 +40,7 @@ cgppl run examples/unset-annotations.cgppl --graph examples/tiny-graph.json --co
 cgppl run examples/match-where.cgppl --graph examples/tiny-graph.json --compact
 cgppl run examples/where-vars.cgppl --graph examples/tiny-graph.json --compact
 cgppl run examples/negative-require.cgppl --graph examples/tiny-graph.json --compact
+cgppl run examples/inline-construction-attrs.cgppl --graph examples/tiny-graph.json --compact
 ```
 
 ## Implemented subset syntax
@@ -68,7 +69,9 @@ rule main => match edge $e from $a to $b where $a != $b;
 rule main => delete node $n;
 rule main => delete edge $e;
 rule main => add node "n3" label "Replacement";
+rule main => add node "n3" label "Replacement" attr "kind" = "generated" attr "active" = true;
 rule main => add edge "e2" from $n to "n3" label "new";
+rule main => add edge "e2" from $n to "n3" label "new" attr "weight" = 1;
 rule main => set node $n attr "kind" = "replacement";
 rule main => set edge $e attr "weight" = 1;
 rule main => set node $n label "Visited";
@@ -89,6 +92,8 @@ rule main => {
   require no edge $blocked from $n to $target label "blocked";
   unset node $n attr "kind";
   unset edge $e label "link";
+  add node "generated" label "Replacement" attr "kind" = "generated";
+  add edge "new-link" from $n to "generated" label "new" attr "weight" = 1;
   set node $target label "Reached";
 }
 ```
@@ -114,16 +119,10 @@ rule main => try {
 - `where` predicates filter match candidates with `==`, `!=`, `<`, `<=`, `>`, and `>=` over literal values, `attr(...)`, built-in fields `id`, `source`, and `target`, and bound `$variables`.
 - Edge endpoint variables are bound before edge `where` predicates run, so `match edge $e from $a to $b where $a != $b;` works as expected.
 - Negative requirements are existential absence checks: `require no node $n label "Excluded";` succeeds only when no node matches the predicate. Variables introduced only inside a negative requirement are temporary and are not visible to later statements.
+- `add node` and `add edge` can construct labels and attributes in a single statement; duplicate inline attribute names are rejected by the parser.
 - `try-or` rolls back graph and variable changes from the failed branch before trying the fallback branch.
 - `unset` is idempotent for missing labels/attributes but still fails if the target node or edge does not exist.
 
 ## Next implementation step
 
-Add inline attributes during graph construction, for example:
-
-```cgppl
-add node "n3" label "Replacement" attr "kind" = "generated";
-add edge "e2" from $n to "n3" label "new" attr "weight" = 1;
-```
-
-This needs AST/parser support for repeated construction annotations, runtime construction with initial labels and attributes, examples, and CLI/runtime tests proving the new objects are created fully annotated without a follow-up `set` statement.
+Add delete/rewrite guard tests around constructed objects. In particular, verify that an object created with inline labels/attributes can be matched, required, and deleted in the same sequential block without requiring a follow-up `set` statement.
