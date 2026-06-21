@@ -8,13 +8,16 @@ from dataclasses import dataclass
 from .ast import (
     AddEdgeStmt,
     AddNodeStmt,
+    AttrExpr,
     AttrPredicate,
     BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
     DeleteNodeStmt,
     FailStmt,
+    FieldExpr,
     GraphRef,
+    LiteralExpr,
     LiteralValue,
     MatchEdgeStmt,
     MatchNodeStmt,
@@ -37,6 +40,8 @@ from .ast import (
     UnsetNodeAttrStmt,
     UnsetNodeLabelStmt,
     VarRef,
+    WhereExpr,
+    WherePredicate,
 )
 from .graph import Edge, Graph, Node
 from .semantics import validate_program
@@ -59,6 +64,7 @@ class RecursionLimitExceeded(RuntimeFailure):
 
 
 Bindings = dict[str, str]
+ComparableValue = LiteralValue | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,10 +98,10 @@ def execute_program(
     ID-based graph mutations, graph construction statements, graph attribute
     predicates/mutations/removal, graph label predicates/mutations/removal,
     pattern-variable matching for node and edge IDs with inline label/attribute
-    constraints, sequential statement blocks, try-or fallback execution, and
-    backtracking across match candidates inside statement blocks. It still keeps
-    all graph updates immutable so the integration point remains stable for
-    later full pattern matching and rewrite semantics.
+    constraints, first-class where filters, sequential statement blocks, try-or
+    fallback execution, and backtracking across match candidates inside statement
+    blocks. It still keeps all graph updates immutable so the integration point
+    remains stable for later full pattern matching and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -457,13 +463,17 @@ def _iter_match_edge_states(
 def _node_matches(node: Node, statement: MatchNodeStmt) -> bool:
     if statement.label is not None and not node.has_label(statement.label):
         return False
-    return _attrs_match(node, statement.attrs)
+    if not _attrs_match(node, statement.attrs):
+        return False
+    return _where_predicates_match(node, statement.where)
 
 
 def _match_edge_candidate(statement: MatchEdgeStmt, edge: Edge, state: _ExecutionState) -> _BindOutcome:
     if statement.label is not None and not edge.has_label(statement.label):
         return _BindOutcome(False, state)
     if not _attrs_match(edge, statement.attrs):
+        return _BindOutcome(False, state)
+    if not _where_predicates_match(edge, statement.where):
         return _BindOutcome(False, state)
 
     current = state
@@ -485,6 +495,61 @@ def _attrs_match(item: Node | Edge, predicates: tuple[AttrPredicate, ...]) -> bo
         if not _values_equal(item.attr(predicate.name), predicate.value):
             return False
     return True
+
+
+def _where_predicates_match(item: Node | Edge, predicates: tuple[WherePredicate, ...]) -> bool:
+    for predicate in predicates:
+        left = _eval_where_expr(item, predicate.left)
+        right = _eval_where_expr(item, predicate.right)
+        if not _compare_values(left, predicate.operator, right):
+            return False
+    return True
+
+
+def _eval_where_expr(item: Node | Edge, expr: WhereExpr) -> ComparableValue:
+    if isinstance(expr, AttrExpr):
+        return item.attr(expr.name)
+    if isinstance(expr, FieldExpr):
+        if expr.name == "id":
+            return item.id
+        if isinstance(item, Edge) and expr.name == "source":
+            return item.source
+        if isinstance(item, Edge) and expr.name == "target":
+            return item.target
+        return None
+    if isinstance(expr, LiteralExpr):
+        return expr.value
+    raise RuntimeFailure(f"unsupported where expression: {expr!r}")
+
+
+def _compare_values(left: ComparableValue, operator: str, right: ComparableValue) -> bool:
+    if operator == "==":
+        return _values_equal(left, right)
+    if operator == "!=":
+        return not _values_equal(left, right)
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, bool):
+        return False
+    if isinstance(left, int) and isinstance(right, int):
+        if operator == "<":
+            return left < right
+        if operator == "<=":
+            return left <= right
+        if operator == ">":
+            return left > right
+        if operator == ">=":
+            return left >= right
+    if isinstance(left, str) and isinstance(right, str):
+        if operator == "<":
+            return left < right
+        if operator == "<=":
+            return left <= right
+        if operator == ">":
+            return left > right
+        if operator == ">=":
+            return left >= right
+    return False
 
 
 def _resolve_ref(
@@ -518,11 +583,11 @@ def _bind_variable(state: _ExecutionState, ref: VarRef, value: str) -> _Executio
     return _ExecutionState(state.graph, bindings)
 
 
-def _values_equal(actual: LiteralValue | None, expected: LiteralValue) -> bool:
+def _values_equal(actual: ComparableValue, expected: ComparableValue) -> bool:
     return type(actual) is type(expected) and actual == expected
 
 
-def _format_value(value: LiteralValue | None) -> str:
+def _format_value(value: ComparableValue) -> str:
     if value is None:
         return "<missing>"
     return repr(value)
