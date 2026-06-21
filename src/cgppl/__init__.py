@@ -10,6 +10,7 @@ from .ast import (
     UnsetEdgeLabelStmt,
     UnsetNodeAttrStmt,
     UnsetNodeLabelStmt,
+    VarExpr,
     VarRef,
     WherePredicate,
 )
