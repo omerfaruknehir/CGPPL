@@ -14,8 +14,28 @@ def test_builds_tiny_immutable_graph():
     assert graph.node_ids == ("a", "b")
     assert graph.edge_ids == ("e1",)
     assert graph.get_node("a").attr("value") == 1
+    assert graph.get_node("a").has_label("start")
     assert graph.get_edge("e1").source == "a"
     assert graph.get_edge("e1").target == "b"
+    assert graph.get_edge("e1").has_label("link")
+
+
+def test_node_with_label_returns_deduplicated_node():
+    node = Node("a", labels=["Root"])
+
+    updated = node.with_label("Visited").with_label("Root")
+
+    assert node.labels == ("Root",)
+    assert updated.labels == ("Root", "Visited")
+
+
+def test_edge_with_label_returns_deduplicated_edge():
+    edge = Edge("e1", "a", "b", labels=["link"])
+
+    updated = edge.with_label("selected").with_label("link")
+
+    assert edge.labels == ("link",)
+    assert updated.labels == ("link", "selected")
 
 
 def test_rejects_duplicate_node_ids():
