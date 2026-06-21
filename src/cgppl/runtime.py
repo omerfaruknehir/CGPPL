@@ -32,6 +32,10 @@ from .ast import (
     SetNodeLabelStmt,
     SkipStmt,
     TryOrStmt,
+    UnsetEdgeAttrStmt,
+    UnsetEdgeLabelStmt,
+    UnsetNodeAttrStmt,
+    UnsetNodeLabelStmt,
     VarRef,
 )
 from .graph import Edge, Graph, Node
@@ -86,12 +90,12 @@ def execute_program(
 
     The current runtime implements control flow, ID-based graph inspection,
     ID-based graph mutations, graph construction statements, graph attribute
-    predicates/mutations, graph label predicates/mutations, pattern-variable
-    matching for node and edge IDs with inline label/attribute constraints,
-    sequential statement blocks, try-or fallback execution, and backtracking
-    across match candidates inside statement blocks. It still keeps all graph
-    updates immutable so the integration point remains stable for later full
-    pattern matching and rewrite semantics.
+    predicates/mutations/removal, graph label predicates/mutations/removal,
+    pattern-variable matching for node and edge IDs with inline label/attribute
+    constraints, sequential statement blocks, try-or fallback execution, and
+    backtracking across match candidates inside statement blocks. It still keeps
+    all graph updates immutable so the integration point remains stable for
+    later full pattern matching and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -265,6 +269,38 @@ def _execute_statement(
                 f"set edge target not found: {edge_id} in rule {_location(call_stack)}"
             )
         edge = graph.get_edge(edge_id).with_label(statement.label)
+        return _ExecutionState(graph.replace_edge(edge), state.bindings)
+    if isinstance(statement, UnsetNodeAttrStmt):
+        node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
+        if not graph.has_node(node_id):
+            raise GraphMatchFailed(
+                f"unset node target not found: {node_id} in rule {_location(call_stack)}"
+            )
+        node = graph.get_node(node_id).without_attr(statement.attr_name)
+        return _ExecutionState(graph.replace_node(node), state.bindings)
+    if isinstance(statement, UnsetEdgeAttrStmt):
+        edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
+        if not graph.has_edge(edge_id):
+            raise GraphMatchFailed(
+                f"unset edge target not found: {edge_id} in rule {_location(call_stack)}"
+            )
+        edge = graph.get_edge(edge_id).without_attr(statement.attr_name)
+        return _ExecutionState(graph.replace_edge(edge), state.bindings)
+    if isinstance(statement, UnsetNodeLabelStmt):
+        node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
+        if not graph.has_node(node_id):
+            raise GraphMatchFailed(
+                f"unset node target not found: {node_id} in rule {_location(call_stack)}"
+            )
+        node = graph.get_node(node_id).without_label(statement.label)
+        return _ExecutionState(graph.replace_node(node), state.bindings)
+    if isinstance(statement, UnsetEdgeLabelStmt):
+        edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
+        if not graph.has_edge(edge_id):
+            raise GraphMatchFailed(
+                f"unset edge target not found: {edge_id} in rule {_location(call_stack)}"
+            )
+        edge = graph.get_edge(edge_id).without_label(statement.label)
         return _ExecutionState(graph.replace_edge(edge), state.bindings)
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, state, call_stack=call_stack)
