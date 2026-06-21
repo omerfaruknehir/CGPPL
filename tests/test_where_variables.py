@@ -30,7 +30,7 @@ def test_node_where_predicate_can_compare_id_to_bound_variable():
     result = execute_program(program, graph)
 
     assert result.graph.get_node("a").labels == ()
-    assert result.graph.get_node("b").labels == ("Selected", "MatchedAgain")
+    assert result.graph.get_node("b").labels == ("MatchedAgain", "Selected")
 
 
 def test_edge_where_predicate_can_compare_endpoint_variables_after_binding():
