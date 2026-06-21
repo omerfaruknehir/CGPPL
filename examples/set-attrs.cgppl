@@ -1,0 +1,9 @@
+program Annotate {
+  rule main => {
+    require node "n2";
+    add node "n3";
+    set node "n3" attr "kind" = "replacement";
+    add edge "e2" from "n2" to "n3";
+    set edge "e2" attr "weight" = 1;
+  }
+}
