@@ -1,0 +1,9 @@
+{
+  "nodes": [
+    {"id": "n1", "labels": ["Root"], "attrs": {"value": 1}},
+    {"id": "n2", "labels": ["Leaf"], "attrs": {}}
+  ],
+  "edges": [
+    {"id": "e1", "source": "n1", "target": "n2", "labels": ["link"], "attrs": {}}
+  ]
+}
