@@ -15,7 +15,7 @@ Implemented pieces:
 - Semantic validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
 - Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, and negative graph requirements.
 - CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
-- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, `where` predicate filtering, `where` variable operands, and negative graph requirements.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, and negative graph requirements.
 
 ## Local development
 
@@ -125,4 +125,4 @@ rule main => try {
 
 ## Next implementation step
 
-Add delete/rewrite guard tests around constructed objects. In particular, verify that an object created with inline labels/attributes can be matched, required, and deleted in the same sequential block without requiring a follow-up `set` statement.
+Implement multi-label predicates and construction. The concrete target syntax and implementation checklist are tracked in `docs/implementation-plan.md`.
