@@ -1,0 +1,9 @@
+program MatchWhere {
+  rule main => {
+    match node $root label "Root" where attr("value") >= 1;
+    set node $root label "SelectedByWhere";
+    match edge $edge from $root to $leaf label "link" where source != target;
+    set edge $edge label "TraversedByWhere";
+    set node $leaf label "ReachedByWhere";
+  }
+}
