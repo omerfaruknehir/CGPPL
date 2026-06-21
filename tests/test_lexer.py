@@ -48,6 +48,21 @@ def test_lexes_graph_construction_keywords():
     ]
 
 
+def test_lexes_graph_attribute_mutation_keywords():
+    tokens = tokenize('set node "n1" attr "active" = true;')
+
+    assert visible(tokens) == [
+        (TokenKind.KEYWORD, "set"),
+        (TokenKind.KEYWORD, "node"),
+        (TokenKind.STRING, "n1"),
+        (TokenKind.KEYWORD, "attr"),
+        (TokenKind.STRING, "active"),
+        (TokenKind.SYMBOL, "="),
+        (TokenKind.KEYWORD, "true"),
+        (TokenKind.SYMBOL, ";"),
+    ]
+
+
 def test_skips_line_and_block_comments():
     tokens = tokenize('program A // comment\n/* more */ rule r -> skip')
     values = [token.value for token in tokens if token.kind is not TokenKind.EOF]
