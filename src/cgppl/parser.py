@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .ast import (
+    BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
     DeleteNodeStmt,
@@ -33,6 +34,9 @@ class Parser:
         rules: list[RuleDecl] = []
         body: list[object] = []
         while not self._check_symbol("}"):
+            if self._check(TokenKind.EOF):
+                token = self._peek()
+                raise ParserError(f"expected symbol '}}' at {token.location()}")
             if self._check_keyword("rule"):
                 rules.append(self._parse_rule())
             else:
@@ -52,6 +56,8 @@ class Parser:
         raise ParserError(f"expected rule arrow at {token.location()}")
 
     def _parse_statement(self) -> object:
+        if self._match_symbol("{"):
+            return self._parse_block_statement()
         if self._match_keyword("skip"):
             self._expect_symbol(";")
             return SkipStmt()
@@ -68,6 +74,16 @@ class Parser:
             self._expect_symbol(")")
         self._expect_symbol(";")
         return CallStmt(token.value)
+
+    def _parse_block_statement(self) -> BlockStmt:
+        statements: list[object] = []
+        while not self._check_symbol("}"):
+            if self._check(TokenKind.EOF):
+                token = self._peek()
+                raise ParserError(f"expected symbol '}}' at {token.location()}")
+            statements.append(self._parse_statement())
+        self._expect_symbol("}")
+        return BlockStmt(tuple(statements))
 
     def _parse_require_statement(self) -> object:
         if self._match_keyword("node"):
@@ -111,6 +127,9 @@ class Parser:
             self.index += 1
             return True
         return False
+
+    def _check(self, kind: TokenKind) -> bool:
+        return self._peek().kind is kind
 
     def _check_keyword(self, value: str) -> bool:
         token = self._peek()
