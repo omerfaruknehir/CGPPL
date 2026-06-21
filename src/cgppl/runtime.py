@@ -12,8 +12,11 @@ from .ast import (
     DeleteEdgeStmt,
     DeleteNodeStmt,
     FailStmt,
+    LiteralValue,
     Program,
+    RequireEdgeAttrStmt,
     RequireEdgeStmt,
+    RequireNodeAttrStmt,
     RequireNodeStmt,
     RuleDecl,
     SetEdgeAttrStmt,
@@ -57,7 +60,7 @@ def execute_program(
 
     The current runtime implements control flow, ID-based graph inspection,
     ID-based graph mutations, graph construction statements, graph attribute
-    mutation statements, and sequential statement blocks. It still keeps all
+    predicates/mutations, and sequential statement blocks. It still keeps all
     graph updates immutable so the integration point remains stable for later
     pattern matching and rewrite semantics.
     """
@@ -118,6 +121,32 @@ def _execute_statement(
         raise GraphMatchFailed(
             f"required edge not found: {statement.edge_id} in rule {_location(call_stack)}"
         )
+    if isinstance(statement, RequireNodeAttrStmt):
+        if not graph.has_node(statement.node_id):
+            raise GraphMatchFailed(
+                f"required node not found: {statement.node_id} in rule {_location(call_stack)}"
+            )
+        actual = graph.get_node(statement.node_id).attr(statement.attr_name)
+        if _values_equal(actual, statement.value):
+            return graph
+        raise GraphMatchFailed(
+            "required node attribute mismatch: "
+            f"{statement.node_id}.{statement.attr_name} expected {_format_value(statement.value)} "
+            f"but found {_format_value(actual)} in rule {_location(call_stack)}"
+        )
+    if isinstance(statement, RequireEdgeAttrStmt):
+        if not graph.has_edge(statement.edge_id):
+            raise GraphMatchFailed(
+                f"required edge not found: {statement.edge_id} in rule {_location(call_stack)}"
+            )
+        actual = graph.get_edge(statement.edge_id).attr(statement.attr_name)
+        if _values_equal(actual, statement.value):
+            return graph
+        raise GraphMatchFailed(
+            "required edge attribute mismatch: "
+            f"{statement.edge_id}.{statement.attr_name} expected {_format_value(statement.value)} "
+            f"but found {_format_value(actual)} in rule {_location(call_stack)}"
+        )
     if isinstance(statement, DeleteNodeStmt):
         if graph.has_node(statement.node_id):
             return graph.remove_node(statement.node_id)
@@ -151,6 +180,16 @@ def _execute_statement(
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, graph, call_stack=call_stack)
     raise RuntimeFailure(f"unsupported statement: {statement!r}")
+
+
+def _values_equal(actual: LiteralValue | None, expected: LiteralValue) -> bool:
+    return type(actual) is type(expected) and actual == expected
+
+
+def _format_value(value: LiteralValue | None) -> str:
+    if value is None:
+        return "<missing>"
+    return repr(value)
 
 
 def _location(call_stack: tuple[str, ...]) -> str:
