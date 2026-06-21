@@ -27,6 +27,7 @@ from .ast import (
     SetNodeAttrStmt,
     SetNodeLabelStmt,
     SkipStmt,
+    TryOrStmt,
     VarRef,
 )
 from .lexer import Token, TokenKind, tokenize
@@ -79,6 +80,8 @@ class Parser:
         if self._match_keyword("fail"):
             self._expect_symbol(";")
             return FailStmt()
+        if self._match_keyword("try"):
+            return self._parse_try_or_statement()
         if self._match_keyword("require"):
             return self._parse_require_statement()
         if self._match_keyword("match"):
@@ -105,6 +108,12 @@ class Parser:
             statements.append(self._parse_statement())
         self._expect_symbol("}")
         return BlockStmt(tuple(statements))
+
+    def _parse_try_or_statement(self) -> TryOrStmt:
+        first = self._parse_statement()
+        self._expect_keyword("or")
+        second = self._parse_statement()
+        return TryOrStmt(first=first, second=second)
 
     def _parse_require_statement(self) -> object:
         if self._match_keyword("node"):
