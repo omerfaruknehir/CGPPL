@@ -13,9 +13,9 @@ Implemented pieces:
 - Recursive-descent parser for `program Name { ... }`, rule declarations, rule calls, `skip`, `fail`, sequential blocks, and `try { ... } or { ... }` fallback blocks.
 - Immutable graph IR with node/edge records, labels, attributes, endpoint validation, serialization, and immutable update/removal helpers.
 - Semantic validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
-- Runtime support for graph inspection, graph mutation, graph construction, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, and annotation removal.
+- Runtime support for graph inspection, graph mutation, graph construction, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, and first-class `where` predicates.
 - CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
-- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, and annotation removal.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, and `where` predicate filtering.
 
 ## Local development
 
@@ -37,6 +37,7 @@ Run a program against a graph:
 cgppl run examples/hello.cgppl --graph examples/tiny-graph.json
 cgppl run examples/backtracking.cgppl --graph examples/tiny-graph.json --compact
 cgppl run examples/unset-annotations.cgppl --graph examples/tiny-graph.json --compact
+cgppl run examples/match-where.cgppl --graph examples/tiny-graph.json --compact
 ```
 
 ## Implemented subset syntax
@@ -54,7 +55,9 @@ rule main => require edge "e1" attr "weight" = 1;
 rule main => require node "n1" label "Root";
 rule main => require edge "e1" label "link";
 rule main => match node $n label "Root" attr "kind" = "root";
+rule main => match node $n label "Candidate" where attr("score") >= 10;
 rule main => match edge $e from $a to $b label "link" attr "weight" = 1;
+rule main => match edge $e from $a to $b where source != target;
 rule main => delete node $n;
 rule main => delete edge $e;
 rule main => add node "n3" label "Replacement";
@@ -73,8 +76,8 @@ Sequential blocks:
 
 ```cgppl
 rule main => {
-  match node $n label "Root" attr "kind" = "root";
-  match edge $e from $n to $target label "link" attr "weight" = 1;
+  match node $n label "Root" where attr("kind") == "root";
+  match edge $e from $n to $target label "link" where attr("weight") >= 1;
   unset node $n attr "kind";
   unset edge $e label "link";
   set node $target label "Reached";
@@ -99,16 +102,17 @@ rule main => try {
 - Attribute comparisons are type-sensitive, so `true` and `1` are distinct.
 - Match statements bind graph IDs to `$variables`; later statements can use those variables.
 - Match statements backtrack inside sequential blocks when a later statement fails.
+- `where` predicates filter match candidates with `==`, `!=`, `<`, `<=`, `>`, and `>=` over literal values, `attr(...)`, and built-in fields `id`, `source`, and `target`.
 - `try-or` rolls back graph and variable changes from the failed branch before trying the fallback branch.
 - `unset` is idempotent for missing labels/attributes but still fails if the target node or edge does not exist.
 
 ## Next implementation step
 
-Add a first-class `where` predicate form for richer match constraints, for example:
+Add variable operands inside `where` predicates so filters can compare candidate fields to existing bindings, for example:
 
 ```cgppl
-match node $n label "Candidate" where attr("score") >= 10;
-match edge $e from $a to $b where source != target;
+match edge $e from $a to $b where $a != $b;
+match node $n where id == $target;
 ```
 
-This needs expression AST nodes, parser support for comparison operators, runtime evaluation against the current graph/bindings, and CLI tests proving candidate filtering works beyond exact equality.
+This needs a `VarExpr` expression node, parser support for `$name` in `where`, runtime lookup against current bindings, and tests for both bound and unbound variable operands.
