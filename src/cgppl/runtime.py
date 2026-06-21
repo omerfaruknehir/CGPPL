@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .ast import (
+    BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
     DeleteNodeStmt,
@@ -50,10 +51,10 @@ def execute_program(
 ) -> ExecutionResult:
     """Validate and execute a program entry rule against an immutable graph.
 
-    The current runtime implements control flow, ID-based graph inspection, and
-    the first ID-based graph mutations. It still keeps all graph updates
-    immutable so the integration point remains stable for later pattern matching
-    and rewrite semantics.
+    The current runtime implements control flow, ID-based graph inspection,
+    ID-based graph mutations, and sequential statement blocks. It still keeps
+    all graph updates immutable so the integration point remains stable for
+    later pattern matching and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -90,6 +91,11 @@ def _execute_statement(
     *,
     call_stack: tuple[str, ...],
 ) -> Graph:
+    if isinstance(statement, BlockStmt):
+        current = graph
+        for child in statement.statements:
+            current = _execute_statement(child, rules, current, call_stack=call_stack)
+        return current
     if isinstance(statement, SkipStmt):
         return graph
     if isinstance(statement, FailStmt):
