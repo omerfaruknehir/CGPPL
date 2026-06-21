@@ -35,6 +35,7 @@ KEYWORDS = frozenset(
         "skip",
         "fail",
         "require",
+        "no",
         "match",
         "delete",
         "add",
@@ -112,27 +113,24 @@ class Lexer:
         tokens: list[Token] = []
         while not self._at_end():
             self._skip_space_and_comments()
-            if self._at_end():
-                break
-            tokens.append(self._next_token())
-
-        pos = self._pos()
-        tokens.append(Token(TokenKind.EOF, "", pos, pos))
+            if not self._at_end():
+                tokens.append(self._next_token())
+        end = self._pos()
+        tokens.append(Token(TokenKind.EOF, "", end, end))
         return tokens
 
     def _next_token(self) -> Token:
-        ch = self._peek()
-        if ch.isalpha() or ch == "_":
+        if self._peek().isalpha() or self._peek() == "_":
             return self._identifier_or_keyword()
-        if ch.isdigit():
+        if self._peek().isdigit():
             return self._integer()
-        if ch == '"':
+        if self._peek() == '"':
             return self._string()
         return self._symbol()
 
     def _identifier_or_keyword(self) -> Token:
         start = self._pos()
-        value = self._consume_while(lambda c: c.isalnum() or c == "_")
+        value = self._consume_while(lambda ch: ch.isalnum() or ch == "_")
         kind = TokenKind.KEYWORD if value in KEYWORDS else TokenKind.IDENT
         return Token(kind, value, start, self._pos())
 
@@ -143,7 +141,7 @@ class Lexer:
 
     def _string(self) -> Token:
         start = self._pos()
-        self._advance()  # opening quote
+        self._advance()
         chars: list[str] = []
         while not self._at_end():
             ch = self._advance()
