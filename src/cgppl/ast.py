@@ -56,3 +56,15 @@ class DeleteNodeStmt:
 @dataclass(frozen=True, slots=True)
 class DeleteEdgeStmt:
     edge_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AddNodeStmt:
+    node_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class AddEdgeStmt:
+    edge_id: str
+    source_id: str
+    target_id: str
