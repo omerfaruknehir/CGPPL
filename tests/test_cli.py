@@ -40,6 +40,36 @@ def test_run_command_uses_selected_entry_point(tmp_path, capsys):
     assert json.loads(captured.out) == {"nodes": [], "edges": []}
 
 
+def test_run_command_can_inspect_graph_contents(tmp_path, capsys):
+    source_path = tmp_path / "require-node.cgppl"
+    source_path.write_text('program Check { rule main => require node "n1"; }', encoding="utf-8")
+
+    graph_payload = {"nodes": [{"id": "n1"}], "edges": []}
+    graph_path = tmp_path / "graph.json"
+    graph_path.write_text(json.dumps(graph_payload), encoding="utf-8")
+
+    exit_code = main(["run", str(source_path), "--graph", str(graph_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert json.loads(captured.out) == {"nodes": [{"id": "n1", "labels": [], "attrs": {}}], "edges": []}
+
+
+def test_run_command_reports_failed_graph_requirement(tmp_path, capsys):
+    source_path = tmp_path / "require-node.cgppl"
+    source_path.write_text('program Check { rule main => require node "missing"; }', encoding="utf-8")
+
+    graph_path = tmp_path / "graph.json"
+    graph_path.write_text(json.dumps({"nodes": [], "edges": []}), encoding="utf-8")
+
+    exit_code = main(["run", str(source_path), "--graph", str(graph_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "cgppl: runtime error:" in captured.out
+    assert "required node not found: missing" in captured.out
+
+
 def test_run_command_reports_invalid_graph(tmp_path, capsys):
     source_path = tmp_path / "hello.cgppl"
     source_path.write_text("program Hello { rule main => skip; }", encoding="utf-8")
