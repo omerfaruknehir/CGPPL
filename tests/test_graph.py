@@ -7,7 +7,7 @@ def test_builds_tiny_immutable_graph():
     graph = (
         Graph.empty()
         .add_node(Node("a", labels=["start"], attrs={"value": 1}))
-        .add_node(Node("b", labels=["end"] ))
+        .add_node(Node("b", labels=["end"]))
         .add_edge(Edge("e1", "a", "b", labels=["link"], attrs={"weight": 7}))
     )
 
