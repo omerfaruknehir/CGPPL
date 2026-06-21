@@ -31,3 +31,13 @@ class FailStmt:
 @dataclass(frozen=True, slots=True)
 class CallStmt:
     name: str
+
+
+@dataclass(frozen=True, slots=True)
+class RequireNodeStmt:
+    node_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class RequireEdgeStmt:
+    edge_id: str
