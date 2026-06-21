@@ -39,6 +39,7 @@ from .ast import (
     UnsetEdgeLabelStmt,
     UnsetNodeAttrStmt,
     UnsetNodeLabelStmt,
+    VarExpr,
     VarRef,
     WhereExpr,
     WherePredicate,
@@ -98,10 +99,11 @@ def execute_program(
     ID-based graph mutations, graph construction statements, graph attribute
     predicates/mutations/removal, graph label predicates/mutations/removal,
     pattern-variable matching for node and edge IDs with inline label/attribute
-    constraints, first-class where filters, sequential statement blocks, try-or
-    fallback execution, and backtracking across match candidates inside statement
-    blocks. It still keeps all graph updates immutable so the integration point
-    remains stable for later full pattern matching and rewrite semantics.
+    constraints, first-class where filters including variable operands,
+    sequential statement blocks, try-or fallback execution, and backtracking
+    across match candidates inside statement blocks. It still keeps all graph
+    updates immutable so the integration point remains stable for later full
+    pattern matching and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -399,7 +401,7 @@ def _iter_match_node_states(
     graph = state.graph
     existing = state.bindings.get(statement.node_id.name)
     if existing is not None:
-        if graph.has_node(existing) and _node_matches(graph.get_node(existing), statement):
+        if graph.has_node(existing) and _node_matches(graph.get_node(existing), statement, state, call_stack):
             yield state
             return
         raise GraphMatchFailed(
@@ -409,9 +411,11 @@ def _iter_match_node_states(
 
     matched = False
     for node in graph.nodes:
-        if _node_matches(node, statement):
-            matched = True
-            yield _bind_variable(state, statement.node_id, node.id)
+        if _node_static_matches(node, statement):
+            candidate = _bind_variable(state, statement.node_id, node.id)
+            if _where_predicates_match(node, statement.where, candidate, call_stack):
+                matched = True
+                yield candidate
 
     if not matched:
         raise GraphMatchFailed(
@@ -438,7 +442,7 @@ def _iter_match_edge_states(
     if existing is not None:
         edge = state.graph.get_edge(existing) if state.graph.has_edge(existing) else None
         if edge is not None:
-            candidate = _match_edge_candidate(statement, edge, state)
+            candidate = _match_edge_candidate(statement, edge, state, call_stack)
             if candidate.matched:
                 yield candidate.state
                 return
@@ -449,10 +453,11 @@ def _iter_match_edge_states(
 
     matched = False
     for edge in state.graph.edges:
-        candidate = _match_edge_candidate(statement, edge, state)
+        edge_state = _bind_variable(state, statement.edge_id, edge.id)
+        candidate = _match_edge_candidate(statement, edge, edge_state, call_stack)
         if candidate.matched:
             matched = True
-            yield _bind_variable(candidate.state, statement.edge_id, edge.id)
+            yield candidate.state
 
     if not matched:
         raise GraphMatchFailed(
@@ -460,20 +465,32 @@ def _iter_match_edge_states(
         )
 
 
-def _node_matches(node: Node, statement: MatchNodeStmt) -> bool:
+def _node_static_matches(node: Node, statement: MatchNodeStmt) -> bool:
     if statement.label is not None and not node.has_label(statement.label):
         return False
-    if not _attrs_match(node, statement.attrs):
+    return _attrs_match(node, statement.attrs)
+
+
+def _node_matches(
+    node: Node,
+    statement: MatchNodeStmt,
+    state: _ExecutionState,
+    call_stack: tuple[str, ...],
+) -> bool:
+    if not _node_static_matches(node, statement):
         return False
-    return _where_predicates_match(node, statement.where)
+    return _where_predicates_match(node, statement.where, state, call_stack)
 
 
-def _match_edge_candidate(statement: MatchEdgeStmt, edge: Edge, state: _ExecutionState) -> _BindOutcome:
+def _match_edge_candidate(
+    statement: MatchEdgeStmt,
+    edge: Edge,
+    state: _ExecutionState,
+    call_stack: tuple[str, ...],
+) -> _BindOutcome:
     if statement.label is not None and not edge.has_label(statement.label):
         return _BindOutcome(False, state)
     if not _attrs_match(edge, statement.attrs):
-        return _BindOutcome(False, state)
-    if not _where_predicates_match(edge, statement.where):
         return _BindOutcome(False, state)
 
     current = state
@@ -487,6 +504,8 @@ def _match_edge_candidate(statement: MatchEdgeStmt, edge: Edge, state: _Executio
         if not target.matched:
             return target
         current = target.state
+    if not _where_predicates_match(edge, statement.where, current, call_stack):
+        return _BindOutcome(False, current)
     return _BindOutcome(True, current)
 
 
@@ -497,16 +516,26 @@ def _attrs_match(item: Node | Edge, predicates: tuple[AttrPredicate, ...]) -> bo
     return True
 
 
-def _where_predicates_match(item: Node | Edge, predicates: tuple[WherePredicate, ...]) -> bool:
+def _where_predicates_match(
+    item: Node | Edge,
+    predicates: tuple[WherePredicate, ...],
+    state: _ExecutionState,
+    call_stack: tuple[str, ...],
+) -> bool:
     for predicate in predicates:
-        left = _eval_where_expr(item, predicate.left)
-        right = _eval_where_expr(item, predicate.right)
+        left = _eval_where_expr(item, predicate.left, state.bindings, call_stack)
+        right = _eval_where_expr(item, predicate.right, state.bindings, call_stack)
         if not _compare_values(left, predicate.operator, right):
             return False
     return True
 
 
-def _eval_where_expr(item: Node | Edge, expr: WhereExpr) -> ComparableValue:
+def _eval_where_expr(
+    item: Node | Edge,
+    expr: WhereExpr,
+    bindings: Bindings,
+    call_stack: tuple[str, ...],
+) -> ComparableValue:
     if isinstance(expr, AttrExpr):
         return item.attr(expr.name)
     if isinstance(expr, FieldExpr):
@@ -519,6 +548,13 @@ def _eval_where_expr(item: Node | Edge, expr: WhereExpr) -> ComparableValue:
         return None
     if isinstance(expr, LiteralExpr):
         return expr.value
+    if isinstance(expr, VarExpr):
+        value = bindings.get(expr.name)
+        if value is None:
+            raise GraphMatchFailed(
+                f"unbound where variable {expr.display()} in rule {_location(call_stack)}"
+            )
+        return value
     raise RuntimeFailure(f"unsupported where expression: {expr!r}")
 
 
