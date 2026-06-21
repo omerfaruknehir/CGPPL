@@ -1,13 +1,17 @@
 """CGPPL language implementation package."""
 
 from .ast import (
+    AttrExpr,
     AttrPredicate,
+    FieldExpr,
+    LiteralExpr,
     TryOrStmt,
     UnsetEdgeAttrStmt,
     UnsetEdgeLabelStmt,
     UnsetNodeAttrStmt,
     UnsetNodeLabelStmt,
     VarRef,
+    WherePredicate,
 )
 from .graph import Edge, Graph, GraphError, Node
 from .lexer import Lexer, LexerError, Token, TokenKind, tokenize
