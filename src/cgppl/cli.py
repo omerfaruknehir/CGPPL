@@ -149,8 +149,11 @@ def _run(path: Path, *, graph_path: Path, entry_point: str, compact: bool) -> in
         print(f"cgppl: runtime error: {exc}")
         return 1
 
-    indent = None if compact else 2
-    print(json.dumps(result.graph.to_dict(), indent=indent))
+    graph_payload = result.graph.to_dict()
+    if compact:
+        print(json.dumps(graph_payload, separators=(",", ":")))
+    else:
+        print(json.dumps(graph_payload, indent=2))
     return 0
 
 
