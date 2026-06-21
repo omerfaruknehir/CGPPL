@@ -76,6 +76,25 @@ def test_lexes_graph_label_keyword():
     ]
 
 
+def test_lexes_match_variables():
+    tokens = tokenize('match node $n label "Root"; delete node $n;')
+
+    assert visible(tokens) == [
+        (TokenKind.KEYWORD, "match"),
+        (TokenKind.KEYWORD, "node"),
+        (TokenKind.SYMBOL, "$"),
+        (TokenKind.IDENT, "n"),
+        (TokenKind.KEYWORD, "label"),
+        (TokenKind.STRING, "Root"),
+        (TokenKind.SYMBOL, ";"),
+        (TokenKind.KEYWORD, "delete"),
+        (TokenKind.KEYWORD, "node"),
+        (TokenKind.SYMBOL, "$"),
+        (TokenKind.IDENT, "n"),
+        (TokenKind.SYMBOL, ";"),
+    ]
+
+
 def test_skips_line_and_block_comments():
     tokens = tokenize('program A // comment\n/* more */ rule r -> skip')
     values = [token.value for token in tokens if token.kind is not TokenKind.EOF]
