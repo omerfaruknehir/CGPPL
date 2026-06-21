@@ -246,7 +246,7 @@ class DeleteEdgeStmt:
 
 @dataclass(frozen=True, slots=True)
 class AddNodeStmt:
-    node_id: str
+    node_id: GraphRef
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
     labels: tuple[str, ...] = ()
@@ -259,7 +259,7 @@ class AddNodeStmt:
 
 @dataclass(frozen=True, slots=True)
 class AddEdgeStmt:
-    edge_id: str
+    edge_id: GraphRef
     source_id: GraphRef
     target_id: GraphRef
     label: str | None = None
