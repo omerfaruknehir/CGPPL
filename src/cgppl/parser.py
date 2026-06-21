@@ -12,7 +12,9 @@ from .ast import (
     FailStmt,
     LiteralValue,
     Program,
+    RequireEdgeAttrStmt,
     RequireEdgeStmt,
+    RequireNodeAttrStmt,
     RequireNodeStmt,
     RuleDecl,
     SetEdgeAttrStmt,
@@ -97,10 +99,22 @@ class Parser:
     def _parse_require_statement(self) -> object:
         if self._match_keyword("node"):
             node_id = self._parse_graph_id()
+            if self._match_keyword("attr"):
+                attr_name = self._parse_graph_id()
+                self._expect_symbol("=")
+                value = self._parse_literal()
+                self._expect_symbol(";")
+                return RequireNodeAttrStmt(node_id, attr_name, value)
             self._expect_symbol(";")
             return RequireNodeStmt(node_id)
         if self._match_keyword("edge"):
             edge_id = self._parse_graph_id()
+            if self._match_keyword("attr"):
+                attr_name = self._parse_graph_id()
+                self._expect_symbol("=")
+                value = self._parse_literal()
+                self._expect_symbol(";")
+                return RequireEdgeAttrStmt(edge_id, attr_name, value)
             self._expect_symbol(";")
             return RequireEdgeStmt(edge_id)
         token = self._peek()
