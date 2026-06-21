@@ -55,6 +55,36 @@ def test_run_command_can_inspect_graph_contents(tmp_path, capsys):
     assert json.loads(captured.out) == {"nodes": [{"id": "n1", "labels": [], "attrs": {}}], "edges": []}
 
 
+def test_run_command_can_inspect_graph_attributes(tmp_path, capsys):
+    source_path = tmp_path / "require-attrs.cgppl"
+    source_path.write_text(
+        'program CheckAttrs { rule main => { require node "n1" attr "kind" = "root"; '
+        'require edge "e1" attr "weight" = 7; } }',
+        encoding="utf-8",
+    )
+
+    graph_payload = {
+        "nodes": [{"id": "n1", "attrs": {"kind": "root"}}, {"id": "n2"}],
+        "edges": [{"id": "e1", "source": "n1", "target": "n2", "attrs": {"weight": 7}}],
+    }
+    graph_path = tmp_path / "graph.json"
+    graph_path.write_text(json.dumps(graph_payload), encoding="utf-8")
+
+    exit_code = main(["run", str(source_path), "--graph", str(graph_path), "--compact"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert json.loads(captured.out) == {
+        "nodes": [
+            {"id": "n1", "labels": [], "attrs": {"kind": "root"}},
+            {"id": "n2", "labels": [], "attrs": {}},
+        ],
+        "edges": [
+            {"id": "e1", "source": "n1", "target": "n2", "labels": [], "attrs": {"weight": 7}}
+        ],
+    }
+
+
 def test_run_command_can_mutate_graph_contents(tmp_path, capsys):
     source_path = tmp_path / "delete-node.cgppl"
     source_path.write_text('program Delete { rule main => delete node "n1"; }', encoding="utf-8")
@@ -170,6 +200,24 @@ def test_run_command_reports_failed_graph_requirement(tmp_path, capsys):
     assert exit_code == 1
     assert "cgppl: runtime error:" in captured.out
     assert "required node not found: missing" in captured.out
+
+
+def test_run_command_reports_failed_graph_attribute_requirement(tmp_path, capsys):
+    source_path = tmp_path / "require-attrs.cgppl"
+    source_path.write_text(
+        'program CheckAttrs { rule main => require node "n1" attr "kind" = "root"; }',
+        encoding="utf-8",
+    )
+
+    graph_path = tmp_path / "graph.json"
+    graph_path.write_text(json.dumps({"nodes": [{"id": "n1", "attrs": {"kind": "leaf"}}], "edges": []}), encoding="utf-8")
+
+    exit_code = main(["run", str(source_path), "--graph", str(graph_path)])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "cgppl: runtime error:" in captured.out
+    assert "required node attribute mismatch" in captured.out
 
 
 def test_run_command_reports_invalid_graph(tmp_path, capsys):
