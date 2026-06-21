@@ -65,6 +65,18 @@ class RequireEdgeAttrStmt:
 
 
 @dataclass(frozen=True, slots=True)
+class RequireNodeLabelStmt:
+    node_id: str
+    label: str
+
+
+@dataclass(frozen=True, slots=True)
+class RequireEdgeLabelStmt:
+    edge_id: str
+    label: str
+
+
+@dataclass(frozen=True, slots=True)
 class DeleteNodeStmt:
     node_id: str
 
@@ -77,6 +89,7 @@ class DeleteEdgeStmt:
 @dataclass(frozen=True, slots=True)
 class AddNodeStmt:
     node_id: str
+    label: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +97,7 @@ class AddEdgeStmt:
     edge_id: str
     source_id: str
     target_id: str
+    label: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,3 +112,15 @@ class SetEdgeAttrStmt:
     edge_id: str
     attr_name: str
     value: LiteralValue
+
+
+@dataclass(frozen=True, slots=True)
+class SetNodeLabelStmt:
+    node_id: str
+    label: str
+
+
+@dataclass(frozen=True, slots=True)
+class SetEdgeLabelStmt:
+    edge_id: str
+    label: str
