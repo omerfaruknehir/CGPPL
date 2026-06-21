@@ -25,6 +25,12 @@ class Node:
         object.__setattr__(self, "labels", _normalize_labels(self.labels))
         object.__setattr__(self, "attrs", _normalize_attrs(self.attrs))
 
+    def has_label(self, label: str) -> bool:
+        return label in self.labels
+
+    def with_label(self, label: str) -> Node:
+        return Node(self.id, labels=self.labels + (label,), attrs=self.attrs)
+
     def attr(self, name: str, default: Value | None = None) -> Value | None:
         for key, value in self.attrs:
             if key == name:
@@ -51,6 +57,12 @@ class Edge:
         _require_id(self.target, "edge target")
         object.__setattr__(self, "labels", _normalize_labels(self.labels))
         object.__setattr__(self, "attrs", _normalize_attrs(self.attrs))
+
+    def has_label(self, label: str) -> bool:
+        return label in self.labels
+
+    def with_label(self, label: str) -> Edge:
+        return Edge(self.id, self.source, self.target, labels=self.labels + (label,), attrs=self.attrs)
 
     def attr(self, name: str, default: Value | None = None) -> Value | None:
         for key, value in self.attrs:
