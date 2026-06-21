@@ -1,0 +1,9 @@
+program TryFallback {
+  rule main => try {
+    match node $n label "Missing";
+    set node $n label "ShouldNotAppear";
+  } or {
+    match node $n label "Root";
+    set node $n label "FallbackUsed";
+  }
+}
