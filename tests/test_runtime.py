@@ -1,8 +1,14 @@
 import pytest
 
-from cgppl.graph import Graph, Node
+from cgppl.graph import Edge, Graph, Node
 from cgppl.parser import parse_program
-from cgppl.runtime import RecursionLimitExceeded, RuleFailed, apply_rule, execute_program
+from cgppl.runtime import (
+    GraphMatchFailed,
+    RecursionLimitExceeded,
+    RuleFailed,
+    apply_rule,
+    execute_program,
+)
 
 
 def test_executes_skip_rule_against_tiny_graph():
@@ -22,6 +28,27 @@ def test_rule_call_dispatches_to_target_rule():
     graph = Graph.empty().add_node(Node("n1"))
 
     assert apply_rule(program, graph) is graph
+
+
+def test_require_node_statement_succeeds_when_node_exists():
+    program = parse_program('program Demo { rule main => require node "n1"; }')
+    graph = Graph.empty().add_node(Node("n1"))
+
+    assert execute_program(program, graph).graph is graph
+
+
+def test_require_edge_statement_succeeds_when_edge_exists():
+    program = parse_program("program Demo { rule main => require edge(e1); }")
+    graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
+
+    assert execute_program(program, graph).graph is graph
+
+
+def test_require_node_statement_fails_when_node_is_missing():
+    program = parse_program('program Demo { rule main => require node "missing"; }')
+
+    with pytest.raises(GraphMatchFailed, match="required node not found: missing"):
+        execute_program(program, Graph.empty())
 
 
 def test_fail_rule_raises_runtime_failure():
