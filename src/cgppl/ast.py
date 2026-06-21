@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+LiteralValue = str | int | bool
+
 
 @dataclass(frozen=True, slots=True)
 class Program:
@@ -68,3 +70,17 @@ class AddEdgeStmt:
     edge_id: str
     source_id: str
     target_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class SetNodeAttrStmt:
+    node_id: str
+    attr_name: str
+    value: LiteralValue
+
+
+@dataclass(frozen=True, slots=True)
+class SetEdgeAttrStmt:
+    edge_id: str
+    attr_name: str
+    value: LiteralValue
