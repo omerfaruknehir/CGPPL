@@ -35,6 +35,7 @@ KEYWORDS = frozenset(
         "skip",
         "fail",
         "require",
+        "match",
         "delete",
         "add",
         "set",
@@ -74,7 +75,7 @@ MULTI_CHAR_SYMBOLS = (
     ":=",
 )
 
-SINGLE_CHAR_SYMBOLS = set("{}()[];,.:+-*/%<>=!&|?")
+SINGLE_CHAR_SYMBOLS = set("{}()[];,.:+-*/%<>=!&|?$")
 
 
 @dataclass(frozen=True, slots=True)
