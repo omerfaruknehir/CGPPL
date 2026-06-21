@@ -36,6 +36,7 @@ from .ast import (
     UnsetEdgeLabelStmt,
     UnsetNodeAttrStmt,
     UnsetNodeLabelStmt,
+    VarExpr,
     VarRef,
     WhereExpr,
     WherePredicate,
@@ -343,6 +344,8 @@ class Parser:
     def _parse_where_expr(self) -> WhereExpr:
         if self._match_keyword("attr"):
             return AttrExpr(self._parse_graph_id())
+        if self._check_symbol("$"):
+            return VarExpr(self._parse_variable_ref().name)
 
         token = self._peek()
         if token.kind is TokenKind.STRING:
