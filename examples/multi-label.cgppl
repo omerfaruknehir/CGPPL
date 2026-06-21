@@ -1,0 +1,14 @@
+program MultiLabel {
+  rule main => {
+    match node $source label "Root";
+    add node "generated" label "Generated" label "Replacement" attr "kind" = "generated";
+    add edge "generated-link" from $source to "generated" label "new" label "owned";
+
+    match node $created label "Generated" label "Replacement";
+    match edge $link from $source to $created label "new" label "owned";
+    require no node $blocked label "Generated" label "Blocked";
+
+    set node $created label "Selected";
+    set edge $link label "Selected";
+  }
+}

@@ -108,4 +108,4 @@ def test_rejects_duplicate_inline_construction_attribute():
 
 def test_rejects_duplicate_inline_construction_label():
     with pytest.raises(ParserError, match="duplicate node constructor label"):
-        parse_program('program Demo { rule main => add node "n3" label "A" label "B"; }')
+        parse_program('program Demo { rule main => add node "n3" label "A" label "A"; }')

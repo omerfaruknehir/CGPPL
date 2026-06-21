@@ -7,6 +7,24 @@ from dataclasses import dataclass
 LiteralValue = str | int | bool
 
 
+def _normalize_labels(label: str | None, labels: tuple[str, ...]) -> tuple[str, ...]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    if label is not None:
+        _append_label(normalized, seen, label)
+    for item in labels:
+        _append_label(normalized, seen, item)
+    return tuple(normalized)
+
+
+def _append_label(labels: list[str], seen: set[str], label: str) -> None:
+    if not isinstance(label, str) or not label:
+        raise ValueError("label must be a non-empty string")
+    if label not in seen:
+        labels.append(label)
+        seen.add(label)
+
+
 @dataclass(frozen=True, slots=True)
 class VarRef:
     name: str
@@ -162,6 +180,12 @@ class RequireNoNodeStmt:
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
     where: tuple[WherePredicate, ...] = ()
+    labels: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        labels = _normalize_labels(self.label, tuple(self.labels))
+        object.__setattr__(self, "labels", labels)
+        object.__setattr__(self, "label", labels[0] if labels else None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,6 +196,12 @@ class RequireNoEdgeStmt:
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
     where: tuple[WherePredicate, ...] = ()
+    labels: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        labels = _normalize_labels(self.label, tuple(self.labels))
+        object.__setattr__(self, "labels", labels)
+        object.__setattr__(self, "label", labels[0] if labels else None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,6 +210,12 @@ class MatchNodeStmt:
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
     where: tuple[WherePredicate, ...] = ()
+    labels: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        labels = _normalize_labels(self.label, tuple(self.labels))
+        object.__setattr__(self, "labels", labels)
+        object.__setattr__(self, "label", labels[0] if labels else None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -190,6 +226,12 @@ class MatchEdgeStmt:
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
     where: tuple[WherePredicate, ...] = ()
+    labels: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        labels = _normalize_labels(self.label, tuple(self.labels))
+        object.__setattr__(self, "labels", labels)
+        object.__setattr__(self, "label", labels[0] if labels else None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,6 +249,12 @@ class AddNodeStmt:
     node_id: str
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
+    labels: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        labels = _normalize_labels(self.label, tuple(self.labels))
+        object.__setattr__(self, "labels", labels)
+        object.__setattr__(self, "label", labels[0] if labels else None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,6 +264,12 @@ class AddEdgeStmt:
     target_id: GraphRef
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
+    labels: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        labels = _normalize_labels(self.label, tuple(self.labels))
+        object.__setattr__(self, "labels", labels)
+        object.__setattr__(self, "label", labels[0] if labels else None)
 
 
 @dataclass(frozen=True, slots=True)

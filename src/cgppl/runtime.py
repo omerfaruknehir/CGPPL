@@ -222,19 +222,17 @@ def _execute_statement(
             return _ExecutionState(graph.remove_edge(edge_id), state.bindings)
         raise GraphMatchFailed(f"delete edge target not found: {edge_id} in rule {_location(call_stack)}")
     if isinstance(statement, AddNodeStmt):
-        labels = (statement.label,) if statement.label is not None else ()
         attrs = _attrs_from_predicates(statement.attrs)
         return _ExecutionState(
-            graph.add_node(Node(statement.node_id, labels=labels, attrs=attrs)),
+            graph.add_node(Node(statement.node_id, labels=statement.labels, attrs=attrs)),
             state.bindings,
         )
     if isinstance(statement, AddEdgeStmt):
         source_id = _resolve_ref(statement.source_id, state.bindings, "edge source", call_stack)
         target_id = _resolve_ref(statement.target_id, state.bindings, "edge target", call_stack)
-        labels = (statement.label,) if statement.label is not None else ()
         attrs = _attrs_from_predicates(statement.attrs)
         return _ExecutionState(
-            graph.add_edge(Edge(statement.edge_id, source_id, target_id, labels=labels, attrs=attrs)),
+            graph.add_edge(Edge(statement.edge_id, source_id, target_id, labels=statement.labels, attrs=attrs)),
             state.bindings,
         )
     if isinstance(statement, SetNodeAttrStmt):
@@ -449,7 +447,7 @@ def _forbidden_node_exists(
         candidate = _try_match_ref(statement.node_id, node.id, state)
         if not candidate.matched:
             continue
-        if not _node_constraints_match(node, statement.label, statement.attrs):
+        if not _node_constraints_match(node, statement.labels, statement.attrs):
             continue
         if _where_predicates_match(node, statement.where, candidate.state, call_stack):
             return True
@@ -465,7 +463,7 @@ def _forbidden_edge_exists(
         current = _try_match_ref(statement.edge_id, edge.id, state)
         if not current.matched:
             continue
-        if not _edge_constraints_match(edge, statement.label, statement.attrs):
+        if not _edge_constraints_match(edge, statement.labels, statement.attrs):
             continue
         if statement.source_id is not None:
             source = _try_match_ref(statement.source_id, edge.source, current.state)
@@ -483,11 +481,11 @@ def _forbidden_edge_exists(
 
 
 def _node_static_matches(node: Node, statement: MatchNodeStmt) -> bool:
-    return _node_constraints_match(node, statement.label, statement.attrs)
+    return _node_constraints_match(node, statement.labels, statement.attrs)
 
 
-def _node_constraints_match(node: Node, label: str | None, attrs: tuple[AttrPredicate, ...]) -> bool:
-    if label is not None and not node.has_label(label):
+def _node_constraints_match(node: Node, labels: tuple[str, ...], attrs: tuple[AttrPredicate, ...]) -> bool:
+    if not _labels_match(node, labels):
         return False
     return _attrs_match(node, attrs)
 
@@ -509,7 +507,7 @@ def _match_edge_candidate(
     state: _ExecutionState,
     call_stack: tuple[str, ...],
 ) -> _BindOutcome:
-    if not _edge_constraints_match(edge, statement.label, statement.attrs):
+    if not _edge_constraints_match(edge, statement.labels, statement.attrs):
         return _BindOutcome(False, state)
 
     current = state
@@ -528,10 +526,14 @@ def _match_edge_candidate(
     return _BindOutcome(True, current)
 
 
-def _edge_constraints_match(edge: Edge, label: str | None, attrs: tuple[AttrPredicate, ...]) -> bool:
-    if label is not None and not edge.has_label(label):
+def _edge_constraints_match(edge: Edge, labels: tuple[str, ...], attrs: tuple[AttrPredicate, ...]) -> bool:
+    if not _labels_match(edge, labels):
         return False
     return _attrs_match(edge, attrs)
+
+
+def _labels_match(item: Node | Edge, labels: tuple[str, ...]) -> bool:
+    return all(item.has_label(label) for label in labels)
 
 
 def _attrs_match(item: Node | Edge, predicates: tuple[AttrPredicate, ...]) -> bool:
