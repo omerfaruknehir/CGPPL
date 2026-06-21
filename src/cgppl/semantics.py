@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from .ast import BlockStmt, CallStmt, Program, RuleDecl
+from .ast import BlockStmt, CallStmt, Program, TryOrStmt
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,5 +43,8 @@ def _check_statement_calls(statement: object, rule_names: set[str], diagnostics:
     if isinstance(statement, BlockStmt):
         for child in statement.statements:
             _check_statement_calls(child, rule_names, diagnostics)
+    elif isinstance(statement, TryOrStmt):
+        _check_statement_calls(statement.first, rule_names, diagnostics)
+        _check_statement_calls(statement.second, rule_names, diagnostics)
     elif isinstance(statement, CallStmt) and statement.name not in rule_names:
         diagnostics.append(Diagnostic(f"undefined rule call: {statement.name}"))
