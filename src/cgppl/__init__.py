@@ -5,6 +5,7 @@ from .lexer import Lexer, LexerError, Token, TokenKind, tokenize
 from .parser import Parser, ParserError, parse_program
 from .runtime import (
     ExecutionResult,
+    GraphMatchFailed,
     RecursionLimitExceeded,
     RuleFailed,
     RuntimeFailure,
