@@ -2,198 +2,113 @@
 
 C++-like General Purpose Programming Language.
 
-This repository now contains the first incremental implementation scaffold for CGPPL.
+This repository currently contains a practical Python implementation scaffold for an executable CGPPL subset. The implementation is intentionally incremental: the front end, graph IR, runtime, examples, and tests are being built in small usable slices.
 
 ## Current status
 
-- Python package metadata in `pyproject.toml`.
-- `src/cgppl/lexer.py`: strict lexer with source spans, comments, literals, keywords, operators, graph-construction keywords, graph-attribute keywords, graph-label keywords, and `$` graph-variable tokens.
-- `src/cgppl/ast.py`: typed AST nodes for the first implemented subset, including sequential statement blocks, try-or fallback statements, graph construction statements, graph attribute requirement statements, graph attribute mutation statements, graph label requirement statements, graph label mutation statements, graph match-variable statements, and inline match attribute predicates.
-- `src/cgppl/parser.py`: recursive-descent parser for `program Name { ... }`, rule declarations, `skip`, `fail`, rule calls, graph requirement statements, graph attribute and label requirement statements, graph match-variable statements with optional label and attribute constraints, graph delete statements, graph add statements, graph attribute and label set statements, brace-delimited statement blocks, and `try { ... } or { ... }` fallback statements.
-- `src/cgppl/semantics.py`: validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
-- `src/cgppl/graph.py`: immutable graph IR with node/edge records, endpoint validation, graph updates, label helpers, attribute updates, and dict serialization.
-- `src/cgppl/runtime.py`: minimal runtime for `skip`, `fail`, rule-call dispatch, `require node` / `require edge` graph inspection, `require ... attr ... = ...` graph attribute predicates, `require ... label ...` graph label predicates, `match node` / `match edge` variable binding with inline label and attribute filtering, `delete node` / `delete edge` graph mutation, `add node` / `add edge` graph construction with optional labels and variable endpoints, `set node attr` / `set edge attr` graph attribute mutation, `set node label` / `set edge label` graph label mutation, sequential block execution, match-candidate backtracking inside blocks, and branch-local try-or fallback execution.
-- `src/cgppl/cli.py`: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run` commands.
-- `tests/`: pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime dispatch, graph inspection, graph attribute inspection, graph label inspection, graph mutation, graph construction, graph label mutation, graph attribute mutation, match-variable binding, inline match attribute filtering, sequential execution, match-candidate backtracking, try-or fallback execution, and CLI graph execution.
-- `examples/hello.cgppl`: minimal source file used by the CLI.
-- `examples/require-node.cgppl`: graph-inspection example requiring node `n1`.
-- `examples/require-attrs.cgppl`: graph-attribute inspection example requiring node and edge attributes.
-- `examples/delete-node.cgppl`: graph-mutation example deleting node `n1`.
-- `examples/sequence-delete.cgppl`: sequential rewrite example that requires and then deletes node `n1`.
-- `examples/add-replacement.cgppl`: graph-construction example that deletes node `n1`, adds node `n3`, and connects `n2 -> n3`.
-- `examples/set-attrs.cgppl`: graph-attribute example that constructs `n3`, connects `n2 -> n3`, and writes node/edge attributes.
-- `examples/label-rewrite.cgppl`: graph-label example that requires labels, adds labels, and creates labeled graph structure.
-- `examples/match-node.cgppl`: graph-variable example that matches a labeled node, mutates it by variable reference, and deletes it.
-- `examples/try-fallback.cgppl`: try-or fallback example that rolls back a failed first branch and commits a second matching branch.
-- `examples/backtracking.cgppl`: match-candidate backtracking example that skips an early candidate after a later predicate fails.
-- `examples/match-attrs.cgppl`: inline match-attribute example that filters node and edge candidates before mutation.
-- `examples/tiny-graph.json`: minimal graph input for `cgppl run`, including sample labels and attributes.
+Implemented pieces:
+
+- Python package metadata and `cgppl` CLI entry point.
+- Strict lexer with source spans, comments, literals, keywords, operators, and `$variable` graph references.
+- Recursive-descent parser for `program Name { ... }`, rule declarations, rule calls, `skip`, `fail`, sequential blocks, and `try { ... } or { ... }` fallback blocks.
+- Immutable graph IR with node/edge records, labels, attributes, endpoint validation, serialization, and immutable update/removal helpers.
+- Semantic validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
+- Runtime support for graph inspection, graph mutation, graph construction, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, and annotation removal.
+- CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, and annotation removal.
 
 ## Local development
 
 Install in editable mode:
 
-    python -m pip install -e .[dev]
+```bash
+python -m pip install -e .[dev]
+```
 
 Run tests:
 
-    pytest
+```bash
+pytest
+```
 
-Lex the example program:
+Run a program against a graph:
 
-    cgppl lex examples/hello.cgppl
-
-Parse the example program:
-
-    cgppl parse --json examples/hello.cgppl
-
-Validate the example program:
-
-    cgppl validate examples/hello.cgppl
-
-Run the graph-preserving example program against a graph:
-
-    cgppl run examples/hello.cgppl --graph examples/tiny-graph.json
-
-Run the graph-inspection example program against a graph:
-
-    cgppl run examples/require-node.cgppl --graph examples/tiny-graph.json
-
-Run the graph-attribute inspection example program against a graph:
-
-    cgppl run examples/require-attrs.cgppl --graph examples/tiny-graph.json --compact
-
-Run the graph-mutation example program against a graph:
-
-    cgppl run examples/delete-node.cgppl --graph examples/tiny-graph.json
-
-Run the sequential graph-rewrite example against a graph:
-
-    cgppl run examples/sequence-delete.cgppl --graph examples/tiny-graph.json --compact
-
-Run the graph-construction example against a graph:
-
-    cgppl run examples/add-replacement.cgppl --graph examples/tiny-graph.json --compact
-
-Run the graph-attribute example against a graph:
-
-    cgppl run examples/set-attrs.cgppl --graph examples/tiny-graph.json --compact
-
-Run the graph-label example against a graph:
-
-    cgppl run examples/label-rewrite.cgppl --graph examples/tiny-graph.json --compact
-
-Run the match-variable example against a graph:
-
-    cgppl run examples/match-node.cgppl --graph examples/tiny-graph.json --compact
-
-Run the try-or fallback example against a graph:
-
-    cgppl run examples/try-fallback.cgppl --graph examples/tiny-graph.json --compact
-
-Run the match-candidate backtracking example against a graph:
-
-    cgppl run examples/backtracking.cgppl --graph examples/tiny-graph.json --compact
-
-Run the inline match-attribute example against a graph:
-
-    cgppl run examples/match-attrs.cgppl --graph examples/tiny-graph.json --compact
-
-Use the graph/runtime API from Python:
-
-    from cgppl.graph import Graph, Node
-    from cgppl.parser import parse_program
-    from cgppl.runtime import execute_program
-
-    program = parse_program('program Demo { rule main => { add node "n3" label "Replacement"; set node "n3" attr "kind" = "replacement"; require node "n3" label "Replacement"; require node "n3" attr "kind" = "replacement"; } }')
-    graph = Graph.empty()
-    result = execute_program(program, graph)
-    assert result.graph.get_node("n3").has_label("Replacement")
-    assert result.graph.get_node("n3").attr("kind") == "replacement"
+```bash
+cgppl run examples/hello.cgppl --graph examples/tiny-graph.json
+cgppl run examples/backtracking.cgppl --graph examples/tiny-graph.json --compact
+cgppl run examples/unset-annotations.cgppl --graph examples/tiny-graph.json --compact
+```
 
 ## Implemented subset syntax
 
-A rule body can be one statement:
+Single-statement rule bodies:
 
-    rule main => skip;
-    rule stop => fail;
-    rule main => helper();
-    rule main => require node "n1";
-    rule main => require edge(e1);
-    rule main => require node "n1" attr "kind" = "root";
-    rule main => require edge "e1" attr "weight" = 1;
-    rule main => require node "n1" label "Root";
-    rule main => require edge "e1" label "link";
-    rule main => match node $n label "Root";
-    rule main => match node $n label "Root" attr "kind" = "root";
-    rule main => match node $n attr "kind" = "root" attr "active" = true;
-    rule main => match edge $e from $a to $b label "link";
-    rule main => match edge $e from $a to $b label "link" attr "weight" = 1;
-    rule main => delete node "n1";
-    rule main => delete node $n;
-    rule main => delete edge(e1);
-    rule main => delete edge $e;
-    rule main => add node "n3";
-    rule main => add node "n3" label "Replacement";
-    rule main => add edge "e2" from "n2" to "n3";
-    rule main => add edge "e2" from $n to "n3" label "new";
-    rule main => set node "n3" attr "kind" = "replacement";
-    rule main => set node $n attr "kind" = "replacement";
-    rule main => set edge "e2" attr "weight" = 1;
-    rule main => set node "n3" attr "active" = true;
-    rule main => set node "n3" label "Visited";
-    rule main => set node $n label "Visited";
-    rule main => set edge "e2" label "selected";
+```cgppl
+rule main => skip;
+rule stop => fail;
+rule main => helper();
+rule main => require node "n1";
+rule main => require edge(e1);
+rule main => require node "n1" attr "kind" = "root";
+rule main => require edge "e1" attr "weight" = 1;
+rule main => require node "n1" label "Root";
+rule main => require edge "e1" label "link";
+rule main => match node $n label "Root" attr "kind" = "root";
+rule main => match edge $e from $a to $b label "link" attr "weight" = 1;
+rule main => delete node $n;
+rule main => delete edge $e;
+rule main => add node "n3" label "Replacement";
+rule main => add edge "e2" from $n to "n3" label "new";
+rule main => set node $n attr "kind" = "replacement";
+rule main => set edge $e attr "weight" = 1;
+rule main => set node $n label "Visited";
+rule main => set edge $e label "selected";
+rule main => unset node $n attr "kind";
+rule main => unset edge $e attr "weight";
+rule main => unset node $n label "Candidate";
+rule main => unset edge $e label "link";
+```
 
-A rule body can also be a brace-delimited sequence:
+Sequential blocks:
 
-    rule main => {
-      match node $n label "Root" attr "kind" = "root";
-      require node $n;
-      set node $n label "Matched";
-      match edge $e from $n to $target label "link" attr "weight" = 1;
-      set node $target label "Reached";
-      delete edge $e;
-      delete node $n;
-    }
+```cgppl
+rule main => {
+  match node $n label "Root" attr "kind" = "root";
+  match edge $e from $n to $target label "link" attr "weight" = 1;
+  unset node $n attr "kind";
+  unset edge $e label "link";
+  set node $target label "Reached";
+}
+```
 
-A rule body can use a fallback branch:
+Fallback blocks:
 
-    rule main => try {
-      match node $n label "Preferred";
-      set node $n label "Selected";
-    } or {
-      match node $n label "Fallback";
-      set node $n label "SelectedFallback";
-    }
+```cgppl
+rule main => try {
+  match node $n label "Preferred";
+  set node $n label "Selected";
+} or {
+  match node $n label "Fallback";
+  set node $n label "SelectedFallback";
+}
+```
 
-`require node` and `require edge` are runtime graph inspections. They leave the graph unchanged when the required item exists and fail the rule when it does not. Their target ID may be a literal ID or a previously bound `$variable`.
+## Notes
 
-`require node ... attr ... = ...` and `require edge ... attr ... = ...` are runtime graph attribute predicates. Values currently support strings, integers, and booleans. Attribute comparisons are type-sensitive, so `true` and `1` are not treated as equal.
-
-`require node ... label ...` and `require edge ... label ...` are runtime graph label predicates. They require exact label membership in the normalized node/edge label tuples.
-
-`match node $n label "Root" attr "kind" = "root"` binds `$n` to a matching node. `match edge $e from $a to $b label "link" attr "weight" = 1` binds the edge ID and can also bind or check endpoint variables. Inline match labels and attributes filter candidates before the rest of the block runs. Multiple attribute predicates are allowed and are type-sensitive. Standalone match statements still commit the first match in graph order. Inside sequential blocks, match statements backtrack across later candidates when a later statement fails, and the first complete sequence that succeeds is committed.
-
-`delete node` and `delete edge` are runtime graph mutations. Deleting a node also deletes incident edges through the immutable graph IR. Targets may be literal IDs or bound variables.
-
-`add node` and `add edge` are runtime graph construction mutations. Duplicate IDs and missing edge endpoints are rejected by the immutable graph IR validation path. A single optional label can be supplied during construction. Edge endpoints may be literal IDs or bound variables.
-
-`set node ... attr ... = ...` and `set edge ... attr ... = ...` are runtime graph attribute mutations. Values currently support strings, integers, and booleans. Missing target nodes or edges fail the rule. Targets may be literal IDs or bound variables.
-
-`set node ... label ...` and `set edge ... label ...` are runtime graph label mutations. They add a label immutably and keep labels deduplicated through the graph IR normalization path. Targets may be literal IDs or bound variables.
-
-Sequential blocks run each child statement in order and thread the immutable graph result and variable bindings from one statement into the next. When a later statement fails after a `match`, the runtime retries the rest of the block against the next matching candidate. Execution fails only after all candidate paths are exhausted.
-
-`try { ... } or { ... }` executes the first branch against the current graph and bindings. If it succeeds, that result is committed and the second branch is skipped. If it fails with a rule failure or match failure, the first branch graph and bindings are discarded, then the second branch runs from the original state. If both branches fail, the whole statement fails.
+- Attribute values currently support strings, integers, and booleans.
+- Attribute comparisons are type-sensitive, so `true` and `1` are distinct.
+- Match statements bind graph IDs to `$variables`; later statements can use those variables.
+- Match statements backtrack inside sequential blocks when a later statement fails.
+- `try-or` rolls back graph and variable changes from the failed branch before trying the fallback branch.
+- `unset` is idempotent for missing labels/attributes but still fails if the target node or edge does not exist.
 
 ## Next implementation step
 
-Add graph annotation removal statements:
+Add a first-class `where` predicate form for richer match constraints, for example:
 
-    unset node $n attr "kind";
-    unset edge $e attr "weight";
-    unset node $n label "Candidate";
-    unset edge $e label "link";
+```cgppl
+match node $n label "Candidate" where attr("score") >= 10;
+match edge $e from $a to $b where source != target;
+```
 
-This should add immutable `without_attr` / `without_label` helpers to nodes and edges, wire them through AST, parser, runtime, and CLI tests, and make graph rewrites able to both add and remove annotations without deleting graph structure.
+This needs expression AST nodes, parser support for comparison operators, runtime evaluation against the current graph/bindings, and CLI tests proving candidate filtering works beyond exact equality.
