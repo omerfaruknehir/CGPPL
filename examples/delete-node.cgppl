@@ -1,0 +1,3 @@
+program DeleteNode {
+  rule main => delete node "n1";
+}
