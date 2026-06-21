@@ -16,6 +16,8 @@ from .ast import (
     RequireEdgeStmt,
     RequireNodeStmt,
     RuleDecl,
+    SetEdgeAttrStmt,
+    SetNodeAttrStmt,
     SkipStmt,
 )
 from .graph import Edge, Graph, Node
@@ -54,10 +56,10 @@ def execute_program(
     """Validate and execute a program entry rule against an immutable graph.
 
     The current runtime implements control flow, ID-based graph inspection,
-    ID-based graph mutations, graph construction statements, and sequential
-    statement blocks. It still keeps all graph updates immutable so the
-    integration point remains stable for later pattern matching and rewrite
-    semantics.
+    ID-based graph mutations, graph construction statements, graph attribute
+    mutation statements, and sequential statement blocks. It still keeps all
+    graph updates immutable so the integration point remains stable for later
+    pattern matching and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -132,6 +134,20 @@ def _execute_statement(
         return graph.add_node(Node(statement.node_id))
     if isinstance(statement, AddEdgeStmt):
         return graph.add_edge(Edge(statement.edge_id, statement.source_id, statement.target_id))
+    if isinstance(statement, SetNodeAttrStmt):
+        if not graph.has_node(statement.node_id):
+            raise GraphMatchFailed(
+                f"set node target not found: {statement.node_id} in rule {_location(call_stack)}"
+            )
+        node = graph.get_node(statement.node_id).with_attr(statement.attr_name, statement.value)
+        return graph.replace_node(node)
+    if isinstance(statement, SetEdgeAttrStmt):
+        if not graph.has_edge(statement.edge_id):
+            raise GraphMatchFailed(
+                f"set edge target not found: {statement.edge_id} in rule {_location(call_stack)}"
+            )
+        edge = graph.get_edge(statement.edge_id).with_attr(statement.attr_name, statement.value)
+        return graph.replace_edge(edge)
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, graph, call_stack=call_stack)
     raise RuntimeFailure(f"unsupported statement: {statement!r}")
