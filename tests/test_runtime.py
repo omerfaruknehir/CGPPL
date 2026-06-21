@@ -83,6 +83,30 @@ def test_delete_node_statement_fails_when_node_is_missing():
         execute_program(program, Graph.empty())
 
 
+def test_block_statement_threads_graph_updates_in_order():
+    program = parse_program(
+        'program Demo { rule main => { require node "a"; delete node "a"; require node "b"; } }'
+    )
+    graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.node_ids == ("b",)
+    assert result.graph.edge_ids == ()
+
+
+def test_block_statement_stops_at_first_failure():
+    program = parse_program(
+        'program Demo { rule main => { require node "missing"; delete node "a"; } }'
+    )
+    graph = Graph.empty().add_node(Node("a"))
+
+    with pytest.raises(GraphMatchFailed, match="required node not found: missing"):
+        execute_program(program, graph)
+
+    assert graph.node_ids == ("a",)
+
+
 def test_fail_rule_raises_runtime_failure():
     program = parse_program("program Demo { rule main => fail; }")
 
