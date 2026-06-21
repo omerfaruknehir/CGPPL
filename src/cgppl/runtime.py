@@ -15,12 +15,16 @@ from .ast import (
     LiteralValue,
     Program,
     RequireEdgeAttrStmt,
+    RequireEdgeLabelStmt,
     RequireEdgeStmt,
     RequireNodeAttrStmt,
+    RequireNodeLabelStmt,
     RequireNodeStmt,
     RuleDecl,
     SetEdgeAttrStmt,
+    SetEdgeLabelStmt,
     SetNodeAttrStmt,
+    SetNodeLabelStmt,
     SkipStmt,
 )
 from .graph import Edge, Graph, Node
@@ -60,9 +64,10 @@ def execute_program(
 
     The current runtime implements control flow, ID-based graph inspection,
     ID-based graph mutations, graph construction statements, graph attribute
-    predicates/mutations, and sequential statement blocks. It still keeps all
-    graph updates immutable so the integration point remains stable for later
-    pattern matching and rewrite semantics.
+    predicates/mutations, graph label predicates/mutations, and sequential
+    statement blocks. It still keeps all graph updates immutable so the
+    integration point remains stable for later pattern matching and rewrite
+    semantics.
     """
 
     return ExecutionResult(
@@ -147,6 +152,28 @@ def _execute_statement(
             f"{statement.edge_id}.{statement.attr_name} expected {_format_value(statement.value)} "
             f"but found {_format_value(actual)} in rule {_location(call_stack)}"
         )
+    if isinstance(statement, RequireNodeLabelStmt):
+        if not graph.has_node(statement.node_id):
+            raise GraphMatchFailed(
+                f"required node not found: {statement.node_id} in rule {_location(call_stack)}"
+            )
+        if graph.get_node(statement.node_id).has_label(statement.label):
+            return graph
+        raise GraphMatchFailed(
+            "required node label missing: "
+            f"{statement.node_id} label {statement.label!r} in rule {_location(call_stack)}"
+        )
+    if isinstance(statement, RequireEdgeLabelStmt):
+        if not graph.has_edge(statement.edge_id):
+            raise GraphMatchFailed(
+                f"required edge not found: {statement.edge_id} in rule {_location(call_stack)}"
+            )
+        if graph.get_edge(statement.edge_id).has_label(statement.label):
+            return graph
+        raise GraphMatchFailed(
+            "required edge label missing: "
+            f"{statement.edge_id} label {statement.label!r} in rule {_location(call_stack)}"
+        )
     if isinstance(statement, DeleteNodeStmt):
         if graph.has_node(statement.node_id):
             return graph.remove_node(statement.node_id)
@@ -160,9 +187,11 @@ def _execute_statement(
             f"delete edge target not found: {statement.edge_id} in rule {_location(call_stack)}"
         )
     if isinstance(statement, AddNodeStmt):
-        return graph.add_node(Node(statement.node_id))
+        labels = (statement.label,) if statement.label is not None else ()
+        return graph.add_node(Node(statement.node_id, labels=labels))
     if isinstance(statement, AddEdgeStmt):
-        return graph.add_edge(Edge(statement.edge_id, statement.source_id, statement.target_id))
+        labels = (statement.label,) if statement.label is not None else ()
+        return graph.add_edge(Edge(statement.edge_id, statement.source_id, statement.target_id, labels=labels))
     if isinstance(statement, SetNodeAttrStmt):
         if not graph.has_node(statement.node_id):
             raise GraphMatchFailed(
@@ -176,6 +205,20 @@ def _execute_statement(
                 f"set edge target not found: {statement.edge_id} in rule {_location(call_stack)}"
             )
         edge = graph.get_edge(statement.edge_id).with_attr(statement.attr_name, statement.value)
+        return graph.replace_edge(edge)
+    if isinstance(statement, SetNodeLabelStmt):
+        if not graph.has_node(statement.node_id):
+            raise GraphMatchFailed(
+                f"set node target not found: {statement.node_id} in rule {_location(call_stack)}"
+            )
+        node = graph.get_node(statement.node_id).with_label(statement.label)
+        return graph.replace_node(node)
+    if isinstance(statement, SetEdgeLabelStmt):
+        if not graph.has_edge(statement.edge_id):
+            raise GraphMatchFailed(
+                f"set edge target not found: {statement.edge_id} in rule {_location(call_stack)}"
+            )
+        edge = graph.get_edge(statement.edge_id).with_label(statement.label)
         return graph.replace_edge(edge)
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, graph, call_stack=call_stack)
