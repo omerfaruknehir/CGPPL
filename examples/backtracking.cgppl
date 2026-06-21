@@ -1,0 +1,7 @@
+program Backtracking {
+  rule main => {
+    match node $n;
+    require node $n label "Leaf";
+    set node $n label "Selected";
+  }
+}
