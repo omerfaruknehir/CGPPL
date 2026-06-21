@@ -31,6 +31,9 @@ class Node:
     def with_label(self, label: str) -> Node:
         return Node(self.id, labels=self.labels + (label,), attrs=self.attrs)
 
+    def without_label(self, label: str) -> Node:
+        return Node(self.id, labels=tuple(item for item in self.labels if item != label), attrs=self.attrs)
+
     def attr(self, name: str, default: Value | None = None) -> Value | None:
         for key, value in self.attrs:
             if key == name:
@@ -41,6 +44,13 @@ class Node:
         attrs = dict(self.attrs)
         attrs[name] = value
         return Node(self.id, labels=self.labels, attrs=attrs)
+
+    def without_attr(self, name: str) -> Node:
+        return Node(
+            self.id,
+            labels=self.labels,
+            attrs=tuple((key, value) for key, value in self.attrs if key != name),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,6 +74,15 @@ class Edge:
     def with_label(self, label: str) -> Edge:
         return Edge(self.id, self.source, self.target, labels=self.labels + (label,), attrs=self.attrs)
 
+    def without_label(self, label: str) -> Edge:
+        return Edge(
+            self.id,
+            self.source,
+            self.target,
+            labels=tuple(item for item in self.labels if item != label),
+            attrs=self.attrs,
+        )
+
     def attr(self, name: str, default: Value | None = None) -> Value | None:
         for key, value in self.attrs:
             if key == name:
@@ -74,6 +93,15 @@ class Edge:
         attrs = dict(self.attrs)
         attrs[name] = value
         return Edge(self.id, self.source, self.target, labels=self.labels, attrs=attrs)
+
+    def without_attr(self, name: str) -> Edge:
+        return Edge(
+            self.id,
+            self.source,
+            self.target,
+            labels=self.labels,
+            attrs=tuple((key, value) for key, value in self.attrs if key != name),
+        )
 
 
 @dataclass(frozen=True, slots=True)
