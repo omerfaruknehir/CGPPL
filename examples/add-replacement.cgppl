@@ -1,0 +1,8 @@
+program Replace {
+  rule main => {
+    require node "n1";
+    delete node "n1";
+    add node "n3";
+    add edge "e2" from "n2" to "n3";
+  }
+}
