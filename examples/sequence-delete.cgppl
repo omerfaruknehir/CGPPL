@@ -1,0 +1,6 @@
+program SequenceDelete {
+  rule main => {
+    require node "n1";
+    delete node "n1";
+  }
+}
