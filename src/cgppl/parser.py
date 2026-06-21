@@ -5,13 +5,16 @@ from __future__ import annotations
 from .ast import (
     AddEdgeStmt,
     AddNodeStmt,
+    AttrExpr,
     AttrPredicate,
     BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
     DeleteNodeStmt,
     FailStmt,
+    FieldExpr,
     GraphRef,
+    LiteralExpr,
     LiteralValue,
     MatchEdgeStmt,
     MatchNodeStmt,
@@ -34,12 +37,18 @@ from .ast import (
     UnsetNodeAttrStmt,
     UnsetNodeLabelStmt,
     VarRef,
+    WhereExpr,
+    WherePredicate,
 )
 from .lexer import Token, TokenKind, tokenize
 
 
 class ParserError(ValueError):
     pass
+
+
+COMPARISON_SYMBOLS = {"=", "==", "!=", "<", "<=", ">", ">="}
+WHERE_FIELDS = {"id", "source", "target"}
 
 
 class Parser:
@@ -160,6 +169,7 @@ class Parser:
             label: str | None = None
             attrs: list[AttrPredicate] = []
             attr_names: set[str] = set()
+            where: list[WherePredicate] = []
             while not self._check_symbol(";"):
                 if self._match_keyword("label"):
                     if label is not None:
@@ -168,13 +178,15 @@ class Parser:
                     label = self._parse_graph_id()
                 elif self._match_keyword("attr"):
                     attrs.append(self._parse_attr_predicate(attr_names, "node matcher"))
+                elif self._match_keyword("where"):
+                    where.append(self._parse_where_predicate())
                 else:
                     token = self._peek()
                     raise ParserError(
-                        f"expected 'label', 'attr', or ';' in node matcher at {token.location()}"
+                        f"expected 'label', 'attr', 'where', or ';' in node matcher at {token.location()}"
                     )
             self._expect_symbol(";")
-            return MatchNodeStmt(node_id, label, tuple(attrs))
+            return MatchNodeStmt(node_id, label, tuple(attrs), tuple(where))
         if self._match_keyword("edge"):
             edge_id = self._parse_variable_ref()
             source_id: GraphRef | None = None
@@ -182,6 +194,7 @@ class Parser:
             label: str | None = None
             attrs: list[AttrPredicate] = []
             attr_names: set[str] = set()
+            where: list[WherePredicate] = []
             while not self._check_symbol(";"):
                 if self._match_keyword("from"):
                     if source_id is not None:
@@ -200,13 +213,16 @@ class Parser:
                     label = self._parse_graph_id()
                 elif self._match_keyword("attr"):
                     attrs.append(self._parse_attr_predicate(attr_names, "edge matcher"))
+                elif self._match_keyword("where"):
+                    where.append(self._parse_where_predicate())
                 else:
                     token = self._peek()
                     raise ParserError(
-                        f"expected 'from', 'to', 'label', 'attr', or ';' in edge matcher at {token.location()}"
+                        "expected 'from', 'to', 'label', 'attr', 'where', or ';' "
+                        f"in edge matcher at {token.location()}"
                     )
             self._expect_symbol(";")
-            return MatchEdgeStmt(edge_id, source_id, target_id, label, tuple(attrs))
+            return MatchEdgeStmt(edge_id, source_id, target_id, label, tuple(attrs), tuple(where))
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'match' at {token.location()}")
 
@@ -313,6 +329,35 @@ class Parser:
         seen_names.add(attr_name)
         self._expect_symbol("=")
         return AttrPredicate(attr_name, self._parse_literal())
+
+    def _parse_where_predicate(self) -> WherePredicate:
+        left = self._parse_where_expr()
+        operator_token = self._peek()
+        if operator_token.kind is not TokenKind.SYMBOL or operator_token.value not in COMPARISON_SYMBOLS:
+            raise ParserError(f"expected where comparison operator at {operator_token.location()}")
+        self.index += 1
+        operator = "==" if operator_token.value == "=" else operator_token.value
+        right = self._parse_where_expr()
+        return WherePredicate(left, operator, right)
+
+    def _parse_where_expr(self) -> WhereExpr:
+        if self._match_keyword("attr"):
+            return AttrExpr(self._parse_graph_id())
+
+        token = self._peek()
+        if token.kind is TokenKind.STRING:
+            self.index += 1
+            return LiteralExpr(token.value)
+        if token.kind is TokenKind.INTEGER:
+            self.index += 1
+            return LiteralExpr(int(token.value))
+        if token.kind is TokenKind.KEYWORD and token.value in {"true", "false"}:
+            self.index += 1
+            return LiteralExpr(token.value == "true")
+        if token.kind in {TokenKind.IDENT, TokenKind.KEYWORD} and token.value in WHERE_FIELDS:
+            self.index += 1
+            return FieldExpr(token.value)
+        raise ParserError(f"expected where operand at {token.location()}")
 
     def _parse_graph_ref(self) -> GraphRef:
         parenthesized = self._match_symbol("(")
