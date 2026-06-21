@@ -1,6 +1,6 @@
 import pytest
 
-from cgppl.graph import Edge, Graph, Node
+from cgppl.graph import Edge, Graph, GraphError, Node
 from cgppl.parser import parse_program
 from cgppl.runtime import (
     GraphMatchFailed,
@@ -83,6 +83,35 @@ def test_delete_node_statement_fails_when_node_is_missing():
         execute_program(program, Graph.empty())
 
 
+def test_add_node_statement_appends_new_node():
+    program = parse_program('program Demo { rule main => add node "b"; }')
+    graph = Graph.empty().add_node(Node("a"))
+
+    result = execute_program(program, graph)
+
+    assert graph.node_ids == ("a",)
+    assert result.graph.node_ids == ("a", "b")
+    assert result.graph.get_node("b").labels == ()
+
+
+def test_add_edge_statement_appends_new_edge():
+    program = parse_program('program Demo { rule main => add edge "e1" from "a" to "b"; }')
+    graph = Graph(nodes=(Node("a"), Node("b")))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.edge_ids == ("e1",)
+    assert result.graph.get_edge("e1") == Edge("e1", "a", "b")
+
+
+def test_add_edge_statement_rejects_missing_endpoint():
+    program = parse_program('program Demo { rule main => add edge "e1" from "a" to "missing"; }')
+    graph = Graph.empty().add_node(Node("a"))
+
+    with pytest.raises(GraphError, match="missing target node: missing"):
+        execute_program(program, graph)
+
+
 def test_block_statement_threads_graph_updates_in_order():
     program = parse_program(
         'program Demo { rule main => { require node "a"; delete node "a"; require node "b"; } }'
@@ -93,6 +122,19 @@ def test_block_statement_threads_graph_updates_in_order():
 
     assert result.graph.node_ids == ("b",)
     assert result.graph.edge_ids == ()
+
+
+def test_block_statement_can_delete_and_construct_graph_structure():
+    program = parse_program(
+        'program Demo { rule main => { delete node "a"; add node "c"; add edge "e2" from "b" to "c"; } }'
+    )
+    graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.node_ids == ("b", "c")
+    assert result.graph.edge_ids == ("e2",)
+    assert result.graph.get_edge("e2") == Edge("e2", "b", "c")
 
 
 def test_block_statement_stops_at_first_failure():
