@@ -55,7 +55,19 @@ class LiteralExpr:
     value: LiteralValue
 
 
-WhereExpr = AttrExpr | FieldExpr | LiteralExpr
+@dataclass(frozen=True, slots=True)
+class VarExpr:
+    name: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name:
+            raise ValueError("where variable expression name must be a non-empty string")
+
+    def display(self) -> str:
+        return f"${self.name}"
+
+
+WhereExpr = AttrExpr | FieldExpr | LiteralExpr | VarExpr
 
 
 @dataclass(frozen=True, slots=True)
