@@ -12,7 +12,7 @@ from cgppl.ast import (
 from cgppl.parser import ParserError, parse_program
 
 
- def test_parses_program_with_rule_and_body_call():
+def test_parses_program_with_rule_and_body_call():
     program = parse_program("program Demo { rule main => skip; main(); }")
 
     assert program.name == "Demo"
@@ -22,12 +22,12 @@ from cgppl.parser import ParserError, parse_program
     assert program.body == (CallStmt("main"),)
 
 
- def test_parses_fail_statement_rule_body():
+def test_parses_fail_statement_rule_body():
     program = parse_program("program Demo { rule stop -> fail; }")
     assert isinstance(program.rules[0].body, FailStmt)
 
 
- def test_parses_graph_requirement_statements():
+def test_parses_graph_requirement_statements():
     program = parse_program(
         'program Demo { rule main => require node "n1"; require edge(e1); }'
     )
@@ -36,7 +36,7 @@ from cgppl.parser import ParserError, parse_program
     assert program.body == (RequireEdgeStmt("e1"),)
 
 
- def test_parses_graph_delete_statements():
+def test_parses_graph_delete_statements():
     program = parse_program(
         'program Demo { rule main => delete node "n1"; delete edge(e1); }'
     )
@@ -45,6 +45,6 @@ from cgppl.parser import ParserError, parse_program
     assert program.body == (DeleteEdgeStmt("e1"),)
 
 
- def test_rejects_missing_program_wrapper():
+def test_rejects_missing_program_wrapper():
     with pytest.raises(ParserError):
         parse_program("rule main => skip;")
