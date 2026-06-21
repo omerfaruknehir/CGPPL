@@ -1,0 +1,7 @@
+program MatchAttrs {
+  rule main => {
+    match node $n label "Root" attr "kind" = "root";
+    match edge $e from $n to $target label "link" attr "weight" = 1;
+    set node $target label "ReachedByAttrMatch";
+  }
+}
