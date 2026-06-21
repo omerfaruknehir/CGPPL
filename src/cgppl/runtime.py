@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 from .ast import (
@@ -85,10 +86,10 @@ def execute_program(
     The current runtime implements control flow, ID-based graph inspection,
     ID-based graph mutations, graph construction statements, graph attribute
     predicates/mutations, graph label predicates/mutations, pattern-variable
-    matching for node and edge IDs, sequential statement blocks, and basic
-    try-or fallback execution. It still keeps all graph updates immutable so
-    the integration point remains stable for later full pattern matching and
-    rewrite semantics.
+    matching for node and edge IDs, sequential statement blocks, try-or fallback
+    execution, and backtracking across match candidates inside statement blocks.
+    It still keeps all graph updates immutable so the integration point remains
+    stable for later full pattern matching and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -128,10 +129,7 @@ def _execute_statement(
 ) -> _ExecutionState:
     graph = state.graph
     if isinstance(statement, BlockStmt):
-        current = state
-        for child in statement.statements:
-            current = _execute_statement(child, rules, current, call_stack=call_stack)
-        return current
+        return _execute_block(statement, rules, state, call_stack=call_stack)
     if isinstance(statement, TryOrStmt):
         return _execute_try_or(statement, rules, state, call_stack=call_stack)
     if isinstance(statement, SkipStmt):
@@ -271,6 +269,55 @@ def _execute_statement(
     raise RuntimeFailure(f"unsupported statement: {statement!r}")
 
 
+def _execute_block(
+    statement: BlockStmt,
+    rules: dict[str, RuleDecl],
+    state: _ExecutionState,
+    *,
+    call_stack: tuple[str, ...],
+) -> _ExecutionState:
+    return _execute_sequence(statement.statements, rules, state, call_stack=call_stack)
+
+
+def _execute_sequence(
+    statements: tuple[object, ...],
+    rules: dict[str, RuleDecl],
+    state: _ExecutionState,
+    *,
+    call_stack: tuple[str, ...],
+) -> _ExecutionState:
+    if not statements:
+        return state
+
+    first, rest = statements[0], statements[1:]
+    last_error: RuleFailed | None = None
+    for candidate in _statement_candidate_states(first, rules, state, call_stack=call_stack):
+        try:
+            return _execute_sequence(rest, rules, candidate, call_stack=call_stack)
+        except RuleFailed as error:
+            last_error = error
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeFailure("statement produced no candidate states")
+
+
+def _statement_candidate_states(
+    statement: object,
+    rules: dict[str, RuleDecl],
+    state: _ExecutionState,
+    *,
+    call_stack: tuple[str, ...],
+) -> Iterable[_ExecutionState]:
+    if isinstance(statement, MatchNodeStmt):
+        yield from _iter_match_node_states(statement, state, call_stack)
+        return
+    if isinstance(statement, MatchEdgeStmt):
+        yield from _iter_match_edge_states(statement, state, call_stack)
+        return
+    yield _execute_statement(statement, rules, state, call_stack=call_stack)
+
+
 def _execute_try_or(
     statement: TryOrStmt,
     rules: dict[str, RuleDecl],
@@ -295,23 +342,37 @@ def _execute_match_node(
     state: _ExecutionState,
     call_stack: tuple[str, ...],
 ) -> _ExecutionState:
+    for candidate in _iter_match_node_states(statement, state, call_stack):
+        return candidate
+    raise RuntimeFailure("node matcher produced no candidate state")
+
+
+def _iter_match_node_states(
+    statement: MatchNodeStmt,
+    state: _ExecutionState,
+    call_stack: tuple[str, ...],
+) -> Iterable[_ExecutionState]:
     graph = state.graph
     existing = state.bindings.get(statement.node_id.name)
     if existing is not None:
         if graph.has_node(existing) and _node_matches(graph.get_node(existing), statement):
-            return state
+            yield state
+            return
         raise GraphMatchFailed(
             f"matched node variable {statement.node_id.display()} no longer satisfies matcher "
             f"in rule {_location(call_stack)}"
         )
 
+    matched = False
     for node in graph.nodes:
         if _node_matches(node, statement):
-            return _bind_variable(state, statement.node_id, node.id)
+            matched = True
+            yield _bind_variable(state, statement.node_id, node.id)
 
-    raise GraphMatchFailed(
-        f"no node matched {statement.node_id.display()} in rule {_location(call_stack)}"
-    )
+    if not matched:
+        raise GraphMatchFailed(
+            f"no node matched {statement.node_id.display()} in rule {_location(call_stack)}"
+        )
 
 
 def _execute_match_edge(
@@ -319,26 +380,40 @@ def _execute_match_edge(
     state: _ExecutionState,
     call_stack: tuple[str, ...],
 ) -> _ExecutionState:
+    for candidate in _iter_match_edge_states(statement, state, call_stack):
+        return candidate
+    raise RuntimeFailure("edge matcher produced no candidate state")
+
+
+def _iter_match_edge_states(
+    statement: MatchEdgeStmt,
+    state: _ExecutionState,
+    call_stack: tuple[str, ...],
+) -> Iterable[_ExecutionState]:
     existing = state.bindings.get(statement.edge_id.name)
     if existing is not None:
         edge = state.graph.get_edge(existing) if state.graph.has_edge(existing) else None
         if edge is not None:
             candidate = _match_edge_candidate(statement, edge, state)
             if candidate.matched:
-                return candidate.state
+                yield candidate.state
+                return
         raise GraphMatchFailed(
             f"matched edge variable {statement.edge_id.display()} no longer satisfies matcher "
             f"in rule {_location(call_stack)}"
         )
 
+    matched = False
     for edge in state.graph.edges:
         candidate = _match_edge_candidate(statement, edge, state)
         if candidate.matched:
-            return _bind_variable(candidate.state, statement.edge_id, edge.id)
+            matched = True
+            yield _bind_variable(candidate.state, statement.edge_id, edge.id)
 
-    raise GraphMatchFailed(
-        f"no edge matched {statement.edge_id.display()} in rule {_location(call_stack)}"
-    )
+    if not matched:
+        raise GraphMatchFailed(
+            f"no edge matched {statement.edge_id.display()} in rule {_location(call_stack)}"
+        )
 
 
 def _node_matches(node: Node, statement: MatchNodeStmt) -> bool:
