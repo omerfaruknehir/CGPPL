@@ -25,6 +25,8 @@ from .ast import (
     RequireEdgeAttrStmt,
     RequireEdgeLabelStmt,
     RequireEdgeStmt,
+    RequireNoEdgeStmt,
+    RequireNoNodeStmt,
     RequireNodeAttrStmt,
     RequireNodeLabelStmt,
     RequireNodeStmt,
@@ -96,14 +98,14 @@ def execute_program(
     """Validate and execute a program entry rule against an immutable graph.
 
     The current runtime implements control flow, ID-based graph inspection,
-    ID-based graph mutations, graph construction statements, graph attribute
-    predicates/mutations/removal, graph label predicates/mutations/removal,
-    pattern-variable matching for node and edge IDs with inline label/attribute
-    constraints, first-class where filters including variable operands,
-    sequential statement blocks, try-or fallback execution, and backtracking
-    across match candidates inside statement blocks. It still keeps all graph
-    updates immutable so the integration point remains stable for later full
-    pattern matching and rewrite semantics.
+    negative graph requirements, ID-based graph mutations, graph construction
+    statements, graph attribute predicates/mutations/removal, graph label
+    predicates/mutations/removal, pattern-variable matching for node and edge
+    IDs with inline label/attribute constraints, first-class where filters
+    including variable operands, sequential statement blocks, try-or fallback
+    execution, and backtracking across match candidates inside statement blocks.
+    It still keeps all graph updates immutable so the integration point remains
+    stable for later full pattern matching and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -151,6 +153,18 @@ def _execute_statement(
     if isinstance(statement, FailStmt):
         location = _location(call_stack)
         raise RuleFailed(f"rule failed: {location}")
+    if isinstance(statement, RequireNoNodeStmt):
+        if _forbidden_node_exists(statement, state, call_stack):
+            raise GraphMatchFailed(
+                f"forbidden node matched {statement.node_id!r} in rule {_location(call_stack)}"
+            )
+        return state
+    if isinstance(statement, RequireNoEdgeStmt):
+        if _forbidden_edge_exists(statement, state, call_stack):
+            raise GraphMatchFailed(
+                f"forbidden edge matched {statement.edge_id!r} in rule {_location(call_stack)}"
+            )
+        return state
     if isinstance(statement, RequireNodeStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if graph.has_node(node_id):
@@ -465,10 +479,60 @@ def _iter_match_edge_states(
         )
 
 
+def _forbidden_node_exists(
+    statement: RequireNoNodeStmt,
+    state: _ExecutionState,
+    call_stack: tuple[str, ...],
+) -> bool:
+    for node in state.graph.nodes:
+        candidate = _try_match_ref(statement.node_id, node.id, state)
+        if not candidate.matched:
+            continue
+        if not _node_constraints_match(node, statement.label, statement.attrs):
+            continue
+        if _where_predicates_match(node, statement.where, candidate.state, call_stack):
+            return True
+    return False
+
+
+def _forbidden_edge_exists(
+    statement: RequireNoEdgeStmt,
+    state: _ExecutionState,
+    call_stack: tuple[str, ...],
+) -> bool:
+    for edge in state.graph.edges:
+        current = _try_match_ref(statement.edge_id, edge.id, state)
+        if not current.matched:
+            continue
+        if not _edge_constraints_match(edge, statement.label, statement.attrs):
+            continue
+        if statement.source_id is not None:
+            source = _try_match_ref(statement.source_id, edge.source, current.state)
+            if not source.matched:
+                continue
+            current = source
+        if statement.target_id is not None:
+            target = _try_match_ref(statement.target_id, edge.target, current.state)
+            if not target.matched:
+                continue
+            current = target
+        if _where_predicates_match(edge, statement.where, current.state, call_stack):
+            return True
+    return False
+
+
 def _node_static_matches(node: Node, statement: MatchNodeStmt) -> bool:
-    if statement.label is not None and not node.has_label(statement.label):
+    return _node_constraints_match(node, statement.label, statement.attrs)
+
+
+def _node_constraints_match(
+    node: Node,
+    label: str | None,
+    attrs: tuple[AttrPredicate, ...],
+) -> bool:
+    if label is not None and not node.has_label(label):
         return False
-    return _attrs_match(node, statement.attrs)
+    return _attrs_match(node, attrs)
 
 
 def _node_matches(
@@ -488,9 +552,7 @@ def _match_edge_candidate(
     state: _ExecutionState,
     call_stack: tuple[str, ...],
 ) -> _BindOutcome:
-    if statement.label is not None and not edge.has_label(statement.label):
-        return _BindOutcome(False, state)
-    if not _attrs_match(edge, statement.attrs):
+    if not _edge_constraints_match(edge, statement.label, statement.attrs):
         return _BindOutcome(False, state)
 
     current = state
@@ -507,6 +569,16 @@ def _match_edge_candidate(
     if not _where_predicates_match(edge, statement.where, current, call_stack):
         return _BindOutcome(False, current)
     return _BindOutcome(True, current)
+
+
+def _edge_constraints_match(
+    edge: Edge,
+    label: str | None,
+    attrs: tuple[AttrPredicate, ...],
+) -> bool:
+    if label is not None and not edge.has_label(label):
+        return False
+    return _attrs_match(edge, attrs)
 
 
 def _attrs_match(item: Node | Edge, predicates: tuple[AttrPredicate, ...]) -> bool:
