@@ -9,11 +9,15 @@ from cgppl.ast import (
     DeleteNodeStmt,
     FailStmt,
     RequireEdgeAttrStmt,
+    RequireEdgeLabelStmt,
     RequireEdgeStmt,
     RequireNodeAttrStmt,
+    RequireNodeLabelStmt,
     RequireNodeStmt,
     SetEdgeAttrStmt,
+    SetEdgeLabelStmt,
     SetNodeAttrStmt,
+    SetNodeLabelStmt,
     SkipStmt,
 )
 from cgppl.parser import ParserError, parse_program
@@ -64,6 +68,16 @@ def test_rejects_non_literal_attribute_requirement_value():
         parse_program('program Demo { rule main => require node "n1" attr "kind" = helper; }')
 
 
+def test_parses_graph_label_requirement_statements():
+    program = parse_program(
+        'program Demo { rule main => require node "n1" label "Root"; '
+        'require edge(e1) label(link); }'
+    )
+
+    assert program.rules[0].body == RequireNodeLabelStmt("n1", "Root")
+    assert program.body == (RequireEdgeLabelStmt("e1", "link"),)
+
+
 def test_parses_graph_delete_statements():
     program = parse_program(
         'program Demo { rule main => delete node "n1"; delete edge(e1); }'
@@ -80,6 +94,16 @@ def test_parses_graph_add_statements():
 
     assert program.rules[0].body == AddNodeStmt("n3")
     assert program.body == (AddEdgeStmt("e2", "n2", "n3"),)
+
+
+def test_parses_graph_add_statements_with_labels():
+    program = parse_program(
+        'program Demo { rule main => add node "n3" label "Replacement"; '
+        'add edge(e2) from(n2) to "n3" label(link); }'
+    )
+
+    assert program.rules[0].body == AddNodeStmt("n3", "Replacement")
+    assert program.body == (AddEdgeStmt("e2", "n2", "n3", "link"),)
 
 
 def test_parses_graph_attribute_set_statements():
@@ -101,6 +125,21 @@ def test_parses_boolean_attribute_values():
 def test_rejects_non_literal_attribute_value():
     with pytest.raises(ParserError, match="expected literal value"):
         parse_program('program Demo { rule main => set node "n1" attr "kind" = helper; }')
+
+
+def test_parses_graph_label_set_statements():
+    program = parse_program(
+        'program Demo { rule main => set node "n3" label "Visited"; '
+        'set edge(e2) label(link); }'
+    )
+
+    assert program.rules[0].body == SetNodeLabelStmt("n3", "Visited")
+    assert program.body == (SetEdgeLabelStmt("e2", "link"),)
+
+
+def test_rejects_set_without_attr_or_label():
+    with pytest.raises(ParserError, match="expected 'attr' or 'label'"):
+        parse_program('program Demo { rule main => set node "n1"; }')
 
 
 def test_parses_block_rule_body():
