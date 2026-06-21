@@ -51,6 +51,54 @@ def test_require_node_statement_fails_when_node_is_missing():
         execute_program(program, Graph.empty())
 
 
+def test_require_node_attr_statement_succeeds_when_value_matches():
+    program = parse_program('program Demo { rule main => require node "a" attr "kind" = "root"; }')
+    graph = Graph.empty().add_node(Node("a", attrs={"kind": "root"}))
+
+    assert execute_program(program, graph).graph is graph
+
+
+def test_require_edge_attr_statement_succeeds_when_value_matches():
+    program = parse_program('program Demo { rule main => require edge "e1" attr "weight" = 2; }')
+    graph = Graph(
+        nodes=(Node("a"), Node("b")),
+        edges=(Edge("e1", "a", "b", attrs={"weight": 2}),),
+    )
+
+    assert execute_program(program, graph).graph is graph
+
+
+def test_require_node_attr_statement_supports_boolean_values():
+    program = parse_program('program Demo { rule main => require node "a" attr "active" = true; }')
+    graph = Graph.empty().add_node(Node("a", attrs={"active": True}))
+
+    assert execute_program(program, graph).graph is graph
+
+
+def test_require_node_attr_statement_is_type_sensitive():
+    program = parse_program('program Demo { rule main => require node "a" attr "flag" = true; }')
+    graph = Graph.empty().add_node(Node("a", attrs={"flag": 1}))
+
+    with pytest.raises(GraphMatchFailed, match="required node attribute mismatch"):
+        execute_program(program, graph)
+
+
+def test_require_node_attr_statement_fails_when_value_differs():
+    program = parse_program('program Demo { rule main => require node "a" attr "kind" = "root"; }')
+    graph = Graph.empty().add_node(Node("a", attrs={"kind": "leaf"}))
+
+    with pytest.raises(GraphMatchFailed, match="required node attribute mismatch"):
+        execute_program(program, graph)
+
+
+def test_require_edge_attr_statement_fails_when_attr_is_missing():
+    program = parse_program('program Demo { rule main => require edge "e1" attr "weight" = 2; }')
+    graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
+
+    with pytest.raises(GraphMatchFailed, match="required edge attribute mismatch"):
+        execute_program(program, graph)
+
+
 def test_delete_node_statement_removes_node_and_incident_edges():
     program = parse_program('program Demo { rule main => delete node "a"; }')
     graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
@@ -187,6 +235,19 @@ def test_block_statement_can_construct_and_annotate_graph_structure():
 
     assert result.graph.get_node("c").attr("kind") == "created"
     assert result.graph.get_edge("e2").attr("weight") == 2
+
+
+def test_block_statement_can_require_and_mutate_attributes():
+    program = parse_program(
+        'program Demo { rule main => { require node "a" attr "kind" = "root"; '
+        'set node "a" attr "kind" = "visited"; } }'
+    )
+    graph = Graph.empty().add_node(Node("a", attrs={"kind": "root"}))
+
+    result = execute_program(program, graph)
+
+    assert graph.get_node("a").attr("kind") == "root"
+    assert result.graph.get_node("a").attr("kind") == "visited"
 
 
 def test_block_statement_stops_at_first_failure():
