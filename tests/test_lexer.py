@@ -63,6 +63,19 @@ def test_lexes_graph_attribute_mutation_keywords():
     ]
 
 
+def test_lexes_graph_label_keyword():
+    tokens = tokenize('require node "n1" label "Root";')
+
+    assert visible(tokens) == [
+        (TokenKind.KEYWORD, "require"),
+        (TokenKind.KEYWORD, "node"),
+        (TokenKind.STRING, "n1"),
+        (TokenKind.KEYWORD, "label"),
+        (TokenKind.STRING, "Root"),
+        (TokenKind.SYMBOL, ";"),
+    ]
+
+
 def test_skips_line_and_block_comments():
     tokens = tokenize('program A // comment\n/* more */ rule r -> skip')
     values = [token.value for token in tokens if token.kind is not TokenKind.EOF]
