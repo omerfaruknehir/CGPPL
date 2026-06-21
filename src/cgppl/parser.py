@@ -10,7 +10,10 @@ from .ast import (
     DeleteEdgeStmt,
     DeleteNodeStmt,
     FailStmt,
+    GraphRef,
     LiteralValue,
+    MatchEdgeStmt,
+    MatchNodeStmt,
     Program,
     RequireEdgeAttrStmt,
     RequireEdgeLabelStmt,
@@ -24,6 +27,7 @@ from .ast import (
     SetNodeAttrStmt,
     SetNodeLabelStmt,
     SkipStmt,
+    VarRef,
 )
 from .lexer import Token, TokenKind, tokenize
 
@@ -77,6 +81,8 @@ class Parser:
             return FailStmt()
         if self._match_keyword("require"):
             return self._parse_require_statement()
+        if self._match_keyword("match"):
+            return self._parse_match_statement()
         if self._match_keyword("delete"):
             return self._parse_delete_statement()
         if self._match_keyword("add"):
@@ -102,7 +108,7 @@ class Parser:
 
     def _parse_require_statement(self) -> object:
         if self._match_keyword("node"):
-            node_id = self._parse_graph_id()
+            node_id = self._parse_graph_ref()
             if self._match_keyword("attr"):
                 attr_name = self._parse_graph_id()
                 self._expect_symbol("=")
@@ -116,7 +122,7 @@ class Parser:
             self._expect_symbol(";")
             return RequireNodeStmt(node_id)
         if self._match_keyword("edge"):
-            edge_id = self._parse_graph_id()
+            edge_id = self._parse_graph_ref()
             if self._match_keyword("attr"):
                 attr_name = self._parse_graph_id()
                 self._expect_symbol("=")
@@ -132,13 +138,48 @@ class Parser:
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'require' at {token.location()}")
 
+    def _parse_match_statement(self) -> object:
+        if self._match_keyword("node"):
+            node_id = self._parse_variable_ref()
+            label = self._parse_optional_label()
+            self._expect_symbol(";")
+            return MatchNodeStmt(node_id, label)
+        if self._match_keyword("edge"):
+            edge_id = self._parse_variable_ref()
+            source_id: GraphRef | None = None
+            target_id: GraphRef | None = None
+            label: str | None = None
+            while not self._check_symbol(";"):
+                if self._match_keyword("from"):
+                    if source_id is not None:
+                        token = self._peek()
+                        raise ParserError(f"duplicate edge source matcher at {token.location()}")
+                    source_id = self._parse_graph_ref()
+                elif self._match_keyword("to"):
+                    if target_id is not None:
+                        token = self._peek()
+                        raise ParserError(f"duplicate edge target matcher at {token.location()}")
+                    target_id = self._parse_graph_ref()
+                elif self._match_keyword("label"):
+                    if label is not None:
+                        token = self._peek()
+                        raise ParserError(f"duplicate edge label matcher at {token.location()}")
+                    label = self._parse_graph_id()
+                else:
+                    token = self._peek()
+                    raise ParserError(f"expected 'from', 'to', 'label', or ';' in edge matcher at {token.location()}")
+            self._expect_symbol(";")
+            return MatchEdgeStmt(edge_id, source_id, target_id, label)
+        token = self._peek()
+        raise ParserError(f"expected 'node' or 'edge' after 'match' at {token.location()}")
+
     def _parse_delete_statement(self) -> object:
         if self._match_keyword("node"):
-            node_id = self._parse_graph_id()
+            node_id = self._parse_graph_ref()
             self._expect_symbol(";")
             return DeleteNodeStmt(node_id)
         if self._match_keyword("edge"):
-            edge_id = self._parse_graph_id()
+            edge_id = self._parse_graph_ref()
             self._expect_symbol(";")
             return DeleteEdgeStmt(edge_id)
         token = self._peek()
@@ -153,9 +194,9 @@ class Parser:
         if self._match_keyword("edge"):
             edge_id = self._parse_graph_id()
             self._expect_keyword("from")
-            source_id = self._parse_graph_id()
+            source_id = self._parse_graph_ref()
             self._expect_keyword("to")
-            target_id = self._parse_graph_id()
+            target_id = self._parse_graph_ref()
             label = self._parse_optional_label()
             self._expect_symbol(";")
             return AddEdgeStmt(edge_id, source_id, target_id, label)
@@ -164,7 +205,7 @@ class Parser:
 
     def _parse_set_statement(self) -> object:
         if self._match_keyword("node"):
-            node_id = self._parse_graph_id()
+            node_id = self._parse_graph_ref()
             if self._match_keyword("attr"):
                 attr_name = self._parse_graph_id()
                 self._expect_symbol("=")
@@ -178,7 +219,7 @@ class Parser:
             token = self._peek()
             raise ParserError(f"expected 'attr' or 'label' after node target at {token.location()}")
         if self._match_keyword("edge"):
-            edge_id = self._parse_graph_id()
+            edge_id = self._parse_graph_ref()
             if self._match_keyword("attr"):
                 attr_name = self._parse_graph_id()
                 self._expect_symbol("=")
@@ -199,12 +240,26 @@ class Parser:
             return self._parse_graph_id()
         return None
 
+    def _parse_graph_ref(self) -> GraphRef:
+        parenthesized = self._match_symbol("(")
+        if self._check_symbol("$"):
+            ref: GraphRef = self._parse_variable_ref()
+        else:
+            ref = self._expect(TokenKind.STRING, TokenKind.IDENT).value
+        if parenthesized:
+            self._expect_symbol(")")
+        return ref
+
     def _parse_graph_id(self) -> str:
         parenthesized = self._match_symbol("(")
         token = self._expect(TokenKind.STRING, TokenKind.IDENT)
         if parenthesized:
             self._expect_symbol(")")
         return token.value
+
+    def _parse_variable_ref(self) -> VarRef:
+        self._expect_symbol("$")
+        return VarRef(self._expect(TokenKind.IDENT).value)
 
     def _parse_literal(self) -> LiteralValue:
         token = self._peek()
