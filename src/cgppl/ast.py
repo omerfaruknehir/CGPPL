@@ -33,6 +33,43 @@ class AttrPredicate:
 
 
 @dataclass(frozen=True, slots=True)
+class AttrExpr:
+    name: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name:
+            raise ValueError("attribute expression name must be a non-empty string")
+
+
+@dataclass(frozen=True, slots=True)
+class FieldExpr:
+    name: str
+
+    def __post_init__(self) -> None:
+        if self.name not in {"id", "source", "target"}:
+            raise ValueError("field expression must be one of: id, source, target")
+
+
+@dataclass(frozen=True, slots=True)
+class LiteralExpr:
+    value: LiteralValue
+
+
+WhereExpr = AttrExpr | FieldExpr | LiteralExpr
+
+
+@dataclass(frozen=True, slots=True)
+class WherePredicate:
+    left: WhereExpr
+    operator: str
+    right: WhereExpr
+
+    def __post_init__(self) -> None:
+        if self.operator not in {"==", "!=", "<", "<=", ">", ">="}:
+            raise ValueError("unsupported where comparison operator")
+
+
+@dataclass(frozen=True, slots=True)
 class Program:
     name: str
     rules: tuple[RuleDecl, ...]
@@ -112,6 +149,7 @@ class MatchNodeStmt:
     node_id: VarRef
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
+    where: tuple[WherePredicate, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,6 +159,7 @@ class MatchEdgeStmt:
     target_id: GraphRef | None = None
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
+    where: tuple[WherePredicate, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
