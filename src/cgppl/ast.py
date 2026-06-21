@@ -51,6 +51,20 @@ class RequireEdgeStmt:
 
 
 @dataclass(frozen=True, slots=True)
+class RequireNodeAttrStmt:
+    node_id: str
+    attr_name: str
+    value: LiteralValue
+
+
+@dataclass(frozen=True, slots=True)
+class RequireEdgeAttrStmt:
+    edge_id: str
+    attr_name: str
+    value: LiteralValue
+
+
+@dataclass(frozen=True, slots=True)
 class DeleteNodeStmt:
     node_id: str
 
