@@ -29,6 +29,10 @@ from .ast import (
     SetNodeLabelStmt,
     SkipStmt,
     TryOrStmt,
+    UnsetEdgeAttrStmt,
+    UnsetEdgeLabelStmt,
+    UnsetNodeAttrStmt,
+    UnsetNodeLabelStmt,
     VarRef,
 )
 from .lexer import Token, TokenKind, tokenize
@@ -93,6 +97,8 @@ class Parser:
             return self._parse_add_statement()
         if self._match_keyword("set"):
             return self._parse_set_statement()
+        if self._match_keyword("unset"):
+            return self._parse_unset_statement()
 
         token = self._expect(TokenKind.IDENT, TokenKind.KEYWORD)
         if self._match_symbol("("):
@@ -265,6 +271,34 @@ class Parser:
             raise ParserError(f"expected 'attr' or 'label' after edge target at {token.location()}")
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'set' at {token.location()}")
+
+    def _parse_unset_statement(self) -> object:
+        if self._match_keyword("node"):
+            node_id = self._parse_graph_ref()
+            if self._match_keyword("attr"):
+                attr_name = self._parse_graph_id()
+                self._expect_symbol(";")
+                return UnsetNodeAttrStmt(node_id, attr_name)
+            if self._match_keyword("label"):
+                label = self._parse_graph_id()
+                self._expect_symbol(";")
+                return UnsetNodeLabelStmt(node_id, label)
+            token = self._peek()
+            raise ParserError(f"expected 'attr' or 'label' after node target at {token.location()}")
+        if self._match_keyword("edge"):
+            edge_id = self._parse_graph_ref()
+            if self._match_keyword("attr"):
+                attr_name = self._parse_graph_id()
+                self._expect_symbol(";")
+                return UnsetEdgeAttrStmt(edge_id, attr_name)
+            if self._match_keyword("label"):
+                label = self._parse_graph_id()
+                self._expect_symbol(";")
+                return UnsetEdgeLabelStmt(edge_id, label)
+            token = self._peek()
+            raise ParserError(f"expected 'attr' or 'label' after edge target at {token.location()}")
+        token = self._peek()
+        raise ParserError(f"expected 'node' or 'edge' after 'unset' at {token.location()}")
 
     def _parse_optional_label(self) -> str | None:
         if self._match_keyword("label"):
