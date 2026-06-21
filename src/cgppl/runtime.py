@@ -4,7 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .ast import CallStmt, FailStmt, Program, RequireEdgeStmt, RequireNodeStmt, RuleDecl, SkipStmt
+from .ast import (
+    CallStmt,
+    DeleteEdgeStmt,
+    DeleteNodeStmt,
+    FailStmt,
+    Program,
+    RequireEdgeStmt,
+    RequireNodeStmt,
+    RuleDecl,
+    SkipStmt,
+)
 from .graph import Graph
 from .semantics import validate_program
 
@@ -40,10 +50,10 @@ def execute_program(
 ) -> ExecutionResult:
     """Validate and execute a program entry rule against an immutable graph.
 
-    The current runtime implements control flow plus the first graph-inspection
-    primitive, `require node` / `require edge`. It still returns an immutable graph
-    even when no rewrite occurs, keeping the integration point stable for later
-    graph mutation statements.
+    The current runtime implements control flow, ID-based graph inspection, and
+    the first ID-based graph mutations. It still keeps all graph updates
+    immutable so the integration point remains stable for later pattern matching
+    and rewrite semantics.
     """
 
     return ExecutionResult(
@@ -96,6 +106,18 @@ def _execute_statement(
             return graph
         raise GraphMatchFailed(
             f"required edge not found: {statement.edge_id} in rule {_location(call_stack)}"
+        )
+    if isinstance(statement, DeleteNodeStmt):
+        if graph.has_node(statement.node_id):
+            return graph.remove_node(statement.node_id)
+        raise GraphMatchFailed(
+            f"delete node target not found: {statement.node_id} in rule {_location(call_stack)}"
+        )
+    if isinstance(statement, DeleteEdgeStmt):
+        if graph.has_edge(statement.edge_id):
+            return graph.remove_edge(statement.edge_id)
+        raise GraphMatchFailed(
+            f"delete edge target not found: {statement.edge_id} in rule {_location(call_stack)}"
         )
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, graph, call_stack=call_stack)
