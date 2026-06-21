@@ -41,6 +41,12 @@ class BlockStmt:
 
 
 @dataclass(frozen=True, slots=True)
+class TryOrStmt:
+    first: object
+    second: object
+
+
+@dataclass(frozen=True, slots=True)
 class SkipStmt:
     pass
 
