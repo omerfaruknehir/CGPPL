@@ -39,6 +39,7 @@ KEYWORDS = frozenset(
         "add",
         "set",
         "attr",
+        "label",
         "from",
         "to",
         "break",
