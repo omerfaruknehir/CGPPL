@@ -1,0 +1,7 @@
+program InlineConstructionAttrs {
+  rule main => {
+    match node $root label "Root";
+    add node "generated" label "Replacement" attr "kind" = "generated" attr "active" = true;
+    add edge "generated-link" from $root to "generated" label "new" attr "weight" = 1;
+  }
+}
