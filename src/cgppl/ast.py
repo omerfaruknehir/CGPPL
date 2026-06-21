@@ -157,6 +157,24 @@ class RequireEdgeLabelStmt:
 
 
 @dataclass(frozen=True, slots=True)
+class RequireNoNodeStmt:
+    node_id: GraphRef
+    label: str | None = None
+    attrs: tuple[AttrPredicate, ...] = ()
+    where: tuple[WherePredicate, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class RequireNoEdgeStmt:
+    edge_id: GraphRef
+    source_id: GraphRef | None = None
+    target_id: GraphRef | None = None
+    label: str | None = None
+    attrs: tuple[AttrPredicate, ...] = ()
+    where: tuple[WherePredicate, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class MatchNodeStmt:
     node_id: VarRef
     label: str | None = None
