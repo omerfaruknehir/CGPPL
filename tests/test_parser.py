@@ -8,7 +8,9 @@ from cgppl.ast import (
     DeleteEdgeStmt,
     DeleteNodeStmt,
     FailStmt,
+    RequireEdgeAttrStmt,
     RequireEdgeStmt,
+    RequireNodeAttrStmt,
     RequireNodeStmt,
     SetEdgeAttrStmt,
     SetNodeAttrStmt,
@@ -39,6 +41,27 @@ def test_parses_graph_requirement_statements():
 
     assert program.rules[0].body == RequireNodeStmt("n1")
     assert program.body == (RequireEdgeStmt("e1"),)
+
+
+def test_parses_graph_attribute_requirement_statements():
+    program = parse_program(
+        'program Demo { rule main => require node "n1" attr "kind" = "root"; '
+        'require edge(e1) attr(weight) = 1; }'
+    )
+
+    assert program.rules[0].body == RequireNodeAttrStmt("n1", "kind", "root")
+    assert program.body == (RequireEdgeAttrStmt("e1", "weight", 1),)
+
+
+def test_parses_boolean_attribute_requirement_values():
+    program = parse_program('program Demo { rule main => require node(n1) attr(active) = true; }')
+
+    assert program.rules[0].body == RequireNodeAttrStmt("n1", "active", True)
+
+
+def test_rejects_non_literal_attribute_requirement_value():
+    with pytest.raises(ParserError, match="expected literal value"):
+        parse_program('program Demo { rule main => require node "n1" attr "kind" = helper; }')
 
 
 def test_parses_graph_delete_statements():
