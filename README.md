@@ -13,9 +13,10 @@ This repository now contains the first incremental implementation scaffold for C
 - `src/cgppl/semantics.py`: validation for duplicate rules, undefined calls, and configurable entry rule checks.
 - `src/cgppl/graph.py`: immutable graph IR with node/edge records, endpoint validation, graph updates, and dict serialization.
 - `src/cgppl/runtime.py`: minimal graph-preserving runtime for `skip`, `fail`, and rule-call dispatch.
-- `src/cgppl/cli.py`: `cgppl lex`, `cgppl parse`, and `cgppl validate` commands.
-- `tests/`: pytest coverage for lexer, parser, semantic validation, graph IR behavior, and runtime dispatch.
+- `src/cgppl/cli.py`: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run` commands.
+- `tests/`: pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime dispatch, and CLI graph execution.
 - `examples/hello.cgppl`: minimal source file used by the CLI.
+- `examples/tiny-graph.json`: minimal graph input for `cgppl run`.
 
 ## Local development
 
@@ -39,6 +40,10 @@ Validate the example program:
 
     cgppl validate examples/hello.cgppl
 
+Run the example program against a graph:
+
+    cgppl run examples/hello.cgppl --graph examples/tiny-graph.json
+
 Use the graph/runtime API from Python:
 
     from cgppl.graph import Graph, Node
@@ -52,9 +57,9 @@ Use the graph/runtime API from Python:
 
 ## Next implementation step
 
-Add graph input/output to the command line:
+Add the first graph-inspection statement:
 
-1. accept a JSON graph file for `cgppl run`,
-2. execute the selected entry rule against that graph,
-3. print the resulting graph as JSON,
-4. keep runtime semantics intentionally small until real graph rewrite statements are parsed.
+1. extend the AST and parser with a tiny node-existence predicate or match statement,
+2. validate referenced graph pattern bindings semantically,
+3. execute it against the immutable graph IR,
+4. add a CLI fixture proving that program behavior can now depend on graph contents.
