@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from .ast import (
+    AddEdgeStmt,
+    AddNodeStmt,
     BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
@@ -68,6 +70,8 @@ class Parser:
             return self._parse_require_statement()
         if self._match_keyword("delete"):
             return self._parse_delete_statement()
+        if self._match_keyword("add"):
+            return self._parse_add_statement()
 
         token = self._expect(TokenKind.IDENT, TokenKind.KEYWORD)
         if self._match_symbol("("):
@@ -108,6 +112,22 @@ class Parser:
             return DeleteEdgeStmt(edge_id)
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'delete' at {token.location()}")
+
+    def _parse_add_statement(self) -> object:
+        if self._match_keyword("node"):
+            node_id = self._parse_graph_id()
+            self._expect_symbol(";")
+            return AddNodeStmt(node_id)
+        if self._match_keyword("edge"):
+            edge_id = self._parse_graph_id()
+            self._expect_keyword("from")
+            source_id = self._parse_graph_id()
+            self._expect_keyword("to")
+            target_id = self._parse_graph_id()
+            self._expect_symbol(";")
+            return AddEdgeStmt(edge_id, source_id, target_id)
+        token = self._peek()
+        raise ParserError(f"expected 'node' or 'edge' after 'add' at {token.location()}")
 
     def _parse_graph_id(self) -> str:
         parenthesized = self._match_symbol("(")
