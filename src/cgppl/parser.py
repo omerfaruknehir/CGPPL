@@ -22,6 +22,8 @@ from .ast import (
     RequireEdgeAttrStmt,
     RequireEdgeLabelStmt,
     RequireEdgeStmt,
+    RequireNoEdgeStmt,
+    RequireNoNodeStmt,
     RequireNodeAttrStmt,
     RequireNodeLabelStmt,
     RequireNodeStmt,
@@ -133,6 +135,8 @@ class Parser:
         return TryOrStmt(first=first, second=second)
 
     def _parse_require_statement(self) -> object:
+        if self._match_keyword("no"):
+            return self._parse_require_no_statement()
         if self._match_keyword("node"):
             node_id = self._parse_graph_ref()
             if self._match_keyword("attr"):
@@ -162,7 +166,73 @@ class Parser:
             self._expect_symbol(";")
             return RequireEdgeStmt(edge_id)
         token = self._peek()
-        raise ParserError(f"expected 'node' or 'edge' after 'require' at {token.location()}")
+        raise ParserError(f"expected 'node', 'edge', or 'no' after 'require' at {token.location()}")
+
+    def _parse_require_no_statement(self) -> object:
+        if self._match_keyword("node"):
+            node_id = self._parse_graph_ref()
+            label: str | None = None
+            attrs: list[AttrPredicate] = []
+            attr_names: set[str] = set()
+            where: list[WherePredicate] = []
+            while not self._check_symbol(";"):
+                if self._match_keyword("label"):
+                    if label is not None:
+                        token = self._peek()
+                        raise ParserError(f"duplicate node label matcher at {token.location()}")
+                    label = self._parse_graph_id()
+                elif self._match_keyword("attr"):
+                    attrs.append(self._parse_attr_predicate(attr_names, "negative node requirement"))
+                elif self._match_keyword("where"):
+                    where.append(self._parse_where_predicate())
+                else:
+                    token = self._peek()
+                    raise ParserError(
+                        "expected 'label', 'attr', 'where', or ';' "
+                        f"in negative node requirement at {token.location()}"
+                    )
+            self._expect_symbol(";")
+            return RequireNoNodeStmt(node_id, label, tuple(attrs), tuple(where))
+        if self._match_keyword("edge"):
+            edge_id = self._parse_graph_ref()
+            source_id: GraphRef | None = None
+            target_id: GraphRef | None = None
+            label: str | None = None
+            attrs: list[AttrPredicate] = []
+            attr_names: set[str] = set()
+            where: list[WherePredicate] = []
+            while not self._check_symbol(";"):
+                if self._match_keyword("from"):
+                    if source_id is not None:
+                        token = self._peek()
+                        raise ParserError(f"duplicate edge source matcher at {token.location()}")
+                    source_id = self._parse_graph_ref()
+                elif self._match_keyword("to"):
+                    if target_id is not None:
+                        token = self._peek()
+                        raise ParserError(f"duplicate edge target matcher at {token.location()}")
+                    target_id = self._parse_graph_ref()
+                elif self._match_keyword("label"):
+                    if label is not None:
+                        token = self._peek()
+                        raise ParserError(f"duplicate edge label matcher at {token.location()}")
+                    label = self._parse_graph_id()
+                elif self._match_keyword("attr"):
+                    attrs.append(self._parse_attr_predicate(attr_names, "negative edge requirement"))
+                elif self._match_keyword("where"):
+                    where.append(self._parse_where_predicate())
+                else:
+                    token = self._peek()
+                    raise ParserError(
+                        "expected 'from', 'to', 'label', 'attr', 'where', or ';' "
+                        f"in negative edge requirement at {token.location()}"
+                    )
+            self._expect_symbol(";")
+            return RequireNoEdgeStmt(
+                edge_id, source_id, target_id, label, tuple(attrs), tuple(where)
+            )
+        token = self._peek()
+        raise ParserError(f"expected 'node' or 'edge' after 'require no' at {token.location()}")
 
     def _parse_match_statement(self) -> object:
         if self._match_keyword("node"):
