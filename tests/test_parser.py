@@ -1,6 +1,7 @@
 import pytest
 
 from cgppl.ast import (
+    BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
     DeleteNodeStmt,
@@ -43,6 +44,27 @@ def test_parses_graph_delete_statements():
 
     assert program.rules[0].body == DeleteNodeStmt("n1")
     assert program.body == (DeleteEdgeStmt("e1"),)
+
+
+def test_parses_block_rule_body():
+    program = parse_program(
+        'program Demo { rule main => { require node "n1"; delete node "n1"; } }'
+    )
+
+    assert program.rules[0].body == BlockStmt(
+        (RequireNodeStmt("n1"), DeleteNodeStmt("n1"))
+    )
+
+
+def test_parses_empty_block_rule_body():
+    program = parse_program("program Demo { rule main => { } }")
+
+    assert program.rules[0].body == BlockStmt(())
+
+
+def test_rejects_unclosed_block():
+    with pytest.raises(ParserError, match="expected symbol"):
+        parse_program('program Demo { rule main => { require node "n1"; }')
 
 
 def test_rejects_missing_program_wrapper():
