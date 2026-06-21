@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
 
+from .graph import Graph, GraphError
 from .lexer import LexerError, TokenKind, tokenize
 from .parser import ParserError, parse_program
+from .runtime import RuntimeFailure, execute_program
 from .semantics import SemanticError, validate_program
 
 
@@ -32,6 +35,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="required entry rule name; pass an empty string to disable the check",
     )
 
+    run_cmd = subcommands.add_parser("run", help="execute a CGPPL source file against a JSON graph")
+    run_cmd.add_argument("path", type=Path)
+    run_cmd.add_argument("--graph", required=True, type=Path, help="input graph JSON file")
+    run_cmd.add_argument("--entry-point", default="main", help="rule to execute")
+    run_cmd.add_argument("--compact", action="store_true", help="emit compact graph JSON")
+
     return parser
 
 
@@ -44,6 +53,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "validate":
         entry_point = args.entry_point if args.entry_point else None
         return _validate(args.path, entry_point=entry_point)
+    if args.command == "run":
+        return _run(
+            args.path,
+            graph_path=args.graph,
+            entry_point=args.entry_point,
+            compact=args.compact,
+        )
     raise AssertionError(f"unhandled command: {args.command}")
 
 
@@ -110,6 +126,39 @@ def _validate(path: Path, *, entry_point: str | None) -> int:
 
     print("ok")
     return 0
+
+
+def _run(path: Path, *, graph_path: Path, entry_point: str, compact: bool) -> int:
+    try:
+        program = parse_program(path.read_text(encoding="utf-8"))
+        graph = _read_graph(graph_path)
+        result = execute_program(program, graph, entry_point=entry_point)
+    except OSError as exc:
+        print(f"cgppl: cannot read input: {exc}")
+        return 2
+    except json.JSONDecodeError as exc:
+        print(f"cgppl: graph JSON error at line {exc.lineno}, column {exc.colno}: {exc.msg}")
+        return 1
+    except GraphError as exc:
+        print(f"cgppl: graph error: {exc}")
+        return 1
+    except (LexerError, ParserError, SemanticError) as exc:
+        print(f"cgppl: program error: {exc}")
+        return 1
+    except RuntimeFailure as exc:
+        print(f"cgppl: runtime error: {exc}")
+        return 1
+
+    indent = None if compact else 2
+    print(json.dumps(result.graph.to_dict(), indent=indent))
+    return 0
+
+
+def _read_graph(path: Path) -> Graph:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, Mapping):
+        raise GraphError("graph JSON root must be an object")
+    return Graph.from_dict(payload)
 
 
 if __name__ == "__main__":
