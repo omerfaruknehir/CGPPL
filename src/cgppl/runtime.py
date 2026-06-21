@@ -1,10 +1,10 @@
-"""Minimal graph-preserving runtime for the implemented CGPPL subset."""
+"""Minimal graph runtime for the implemented CGPPL subset."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .ast import CallStmt, FailStmt, Program, RuleDecl, SkipStmt
+from .ast import CallStmt, FailStmt, Program, RequireEdgeStmt, RequireNodeStmt, RuleDecl, SkipStmt
 from .graph import Graph
 from .semantics import validate_program
 
@@ -14,6 +14,10 @@ class RuntimeFailure(RuntimeError):
 
 
 class RuleFailed(RuntimeFailure):
+    pass
+
+
+class GraphMatchFailed(RuleFailed):
     pass
 
 
@@ -36,9 +40,10 @@ def execute_program(
 ) -> ExecutionResult:
     """Validate and execute a program entry rule against an immutable graph.
 
-    The current runtime only implements control flow for `skip`, `fail`, and rule calls.
-    It deliberately returns a graph even though this subset has no graph mutations yet; this
-    gives later rewrite operations a stable integration point.
+    The current runtime implements control flow plus the first graph-inspection
+    primitive, `require node` / `require edge`. It still returns an immutable graph
+    even when no rewrite occurs, keeping the integration point stable for later
+    graph mutation statements.
     """
 
     return ExecutionResult(
@@ -78,8 +83,24 @@ def _execute_statement(
     if isinstance(statement, SkipStmt):
         return graph
     if isinstance(statement, FailStmt):
-        location = " -> ".join(call_stack) or "<entry>"
+        location = _location(call_stack)
         raise RuleFailed(f"rule failed: {location}")
+    if isinstance(statement, RequireNodeStmt):
+        if graph.has_node(statement.node_id):
+            return graph
+        raise GraphMatchFailed(
+            f"required node not found: {statement.node_id} in rule {_location(call_stack)}"
+        )
+    if isinstance(statement, RequireEdgeStmt):
+        if graph.has_edge(statement.edge_id):
+            return graph
+        raise GraphMatchFailed(
+            f"required edge not found: {statement.edge_id} in rule {_location(call_stack)}"
+        )
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, graph, call_stack=call_stack)
     raise RuntimeFailure(f"unsupported statement: {statement!r}")
+
+
+def _location(call_stack: tuple[str, ...]) -> str:
+    return " -> ".join(call_stack) or "<entry>"
