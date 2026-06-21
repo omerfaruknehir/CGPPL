@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
-from .ast import CallStmt, FailStmt, Program, RuleDecl, SkipStmt
+from .ast import (
+    CallStmt,
+    FailStmt,
+    Program,
+    RequireEdgeStmt,
+    RequireNodeStmt,
+    RuleDecl,
+    SkipStmt,
+)
 from .lexer import Token, TokenKind, tokenize
 
 
@@ -48,12 +56,33 @@ class Parser:
         if self._match_keyword("fail"):
             self._expect_symbol(";")
             return FailStmt()
+        if self._match_keyword("require"):
+            return self._parse_require_statement()
 
         token = self._expect(TokenKind.IDENT, TokenKind.KEYWORD)
         if self._match_symbol("("):
             self._expect_symbol(")")
         self._expect_symbol(";")
         return CallStmt(token.value)
+
+    def _parse_require_statement(self) -> object:
+        if self._match_keyword("node"):
+            node_id = self._parse_graph_id()
+            self._expect_symbol(";")
+            return RequireNodeStmt(node_id)
+        if self._match_keyword("edge"):
+            edge_id = self._parse_graph_id()
+            self._expect_symbol(";")
+            return RequireEdgeStmt(edge_id)
+        token = self._peek()
+        raise ParserError(f"expected 'node' or 'edge' after 'require' at {token.location()}")
+
+    def _parse_graph_id(self) -> str:
+        parenthesized = self._match_symbol("(")
+        token = self._expect(TokenKind.STRING, TokenKind.IDENT)
+        if parenthesized:
+            self._expect_symbol(")")
+        return token.value
 
     def _match_keyword(self, value: str) -> bool:
         if self._check_keyword(value):
