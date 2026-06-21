@@ -1,9 +1,9 @@
 program CleanAnnotations {
   rule main => {
-    match node $n label "Candidate" attr "kind" = "root";
+    match node $n label "Root" attr "kind" = "root";
     match edge $e from $n to $target label "link" attr "weight" = 1;
     unset node $n attr "kind";
-    unset node $n label "Candidate";
+    unset node $n label "Root";
     unset edge $e attr "weight";
     unset edge $e label "link";
     set node $target label "CleanedTarget";
