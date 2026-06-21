@@ -1,6 +1,8 @@
 import pytest
 
 from cgppl.ast import (
+    AddEdgeStmt,
+    AddNodeStmt,
     BlockStmt,
     CallStmt,
     DeleteEdgeStmt,
@@ -44,6 +46,15 @@ def test_parses_graph_delete_statements():
 
     assert program.rules[0].body == DeleteNodeStmt("n1")
     assert program.body == (DeleteEdgeStmt("e1"),)
+
+
+def test_parses_graph_add_statements():
+    program = parse_program(
+        'program Demo { rule main => add node "n3"; add edge(e2) from(n2) to "n3"; }'
+    )
+
+    assert program.rules[0].body == AddNodeStmt("n3")
+    assert program.body == (AddEdgeStmt("e2", "n2", "n3"),)
 
 
 def test_parses_block_rule_body():
