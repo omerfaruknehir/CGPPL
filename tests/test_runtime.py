@@ -99,6 +99,39 @@ def test_require_edge_attr_statement_fails_when_attr_is_missing():
         execute_program(program, graph)
 
 
+def test_require_node_label_statement_succeeds_when_label_exists():
+    program = parse_program('program Demo { rule main => require node "a" label "Root"; }')
+    graph = Graph.empty().add_node(Node("a", labels=["Root"]))
+
+    assert execute_program(program, graph).graph is graph
+
+
+def test_require_edge_label_statement_succeeds_when_label_exists():
+    program = parse_program('program Demo { rule main => require edge "e1" label "link"; }')
+    graph = Graph(
+        nodes=(Node("a"), Node("b")),
+        edges=(Edge("e1", "a", "b", labels=["link"]),),
+    )
+
+    assert execute_program(program, graph).graph is graph
+
+
+def test_require_node_label_statement_fails_when_label_is_missing():
+    program = parse_program('program Demo { rule main => require node "a" label "Root"; }')
+    graph = Graph.empty().add_node(Node("a", labels=["Leaf"]))
+
+    with pytest.raises(GraphMatchFailed, match="required node label missing"):
+        execute_program(program, graph)
+
+
+def test_require_edge_label_statement_fails_when_label_is_missing():
+    program = parse_program('program Demo { rule main => require edge "e1" label "link"; }')
+    graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
+
+    with pytest.raises(GraphMatchFailed, match="required edge label missing"):
+        execute_program(program, graph)
+
+
 def test_delete_node_statement_removes_node_and_incident_edges():
     program = parse_program('program Demo { rule main => delete node "a"; }')
     graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
@@ -142,6 +175,15 @@ def test_add_node_statement_appends_new_node():
     assert result.graph.get_node("b").labels == ()
 
 
+def test_add_node_statement_can_create_labeled_node():
+    program = parse_program('program Demo { rule main => add node "b" label "Created"; }')
+    graph = Graph.empty().add_node(Node("a"))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.get_node("b").labels == ("Created",)
+
+
 def test_add_edge_statement_appends_new_edge():
     program = parse_program('program Demo { rule main => add edge "e1" from "a" to "b"; }')
     graph = Graph(nodes=(Node("a"), Node("b")))
@@ -150,6 +192,15 @@ def test_add_edge_statement_appends_new_edge():
 
     assert result.graph.edge_ids == ("e1",)
     assert result.graph.get_edge("e1") == Edge("e1", "a", "b")
+
+
+def test_add_edge_statement_can_create_labeled_edge():
+    program = parse_program('program Demo { rule main => add edge "e1" from "a" to "b" label "link"; }')
+    graph = Graph(nodes=(Node("a"), Node("b")))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.get_edge("e1").labels == ("link",)
 
 
 def test_add_edge_statement_rejects_missing_endpoint():
@@ -196,6 +247,36 @@ def test_set_node_attr_statement_fails_when_node_is_missing():
     program = parse_program('program Demo { rule main => set node "missing" attr "kind" = "new"; }')
 
     with pytest.raises(GraphMatchFailed, match="set node target not found: missing"):
+        execute_program(program, Graph.empty())
+
+
+def test_set_node_label_statement_adds_label_immutably():
+    program = parse_program('program Demo { rule main => set node "a" label "Visited"; }')
+    graph = Graph.empty().add_node(Node("a", labels=["Root"]))
+
+    result = execute_program(program, graph)
+
+    assert graph.get_node("a").labels == ("Root",)
+    assert result.graph.get_node("a").labels == ("Root", "Visited")
+
+
+def test_set_edge_label_statement_adds_label_immutably():
+    program = parse_program('program Demo { rule main => set edge "e1" label "selected"; }')
+    graph = Graph(
+        nodes=(Node("a"), Node("b")),
+        edges=(Edge("e1", "a", "b", labels=["link"]),),
+    )
+
+    result = execute_program(program, graph)
+
+    assert graph.get_edge("e1").labels == ("link",)
+    assert result.graph.get_edge("e1").labels == ("link", "selected")
+
+
+def test_set_edge_label_statement_fails_when_edge_is_missing():
+    program = parse_program('program Demo { rule main => set edge "missing" label "selected"; }')
+
+    with pytest.raises(GraphMatchFailed, match="set edge target not found: missing"):
         execute_program(program, Graph.empty())
 
 
@@ -248,6 +329,20 @@ def test_block_statement_can_require_and_mutate_attributes():
 
     assert graph.get_node("a").attr("kind") == "root"
     assert result.graph.get_node("a").attr("kind") == "visited"
+
+
+def test_block_statement_can_require_and_mutate_labels():
+    program = parse_program(
+        'program Demo { rule main => { require node "a" label "Root"; set node "a" label "Visited"; '
+        'add node "b" label "Leaf"; add edge "e1" from "a" to "b" label "link"; require edge "e1" label "link"; } }'
+    )
+    graph = Graph.empty().add_node(Node("a", labels=["Root"]))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.get_node("a").labels == ("Root", "Visited")
+    assert result.graph.get_node("b").labels == ("Leaf",)
+    assert result.graph.get_edge("e1").labels == ("link",)
 
 
 def test_block_statement_stops_at_first_failure():
