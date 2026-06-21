@@ -23,6 +23,16 @@ GraphRef = str | VarRef
 
 
 @dataclass(frozen=True, slots=True)
+class AttrPredicate:
+    name: str
+    value: LiteralValue
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name:
+            raise ValueError("attribute name must be a non-empty string")
+
+
+@dataclass(frozen=True, slots=True)
 class Program:
     name: str
     rules: tuple[RuleDecl, ...]
@@ -101,6 +111,7 @@ class RequireEdgeLabelStmt:
 class MatchNodeStmt:
     node_id: VarRef
     label: str | None = None
+    attrs: tuple[AttrPredicate, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +120,7 @@ class MatchEdgeStmt:
     source_id: GraphRef | None = None
     target_id: GraphRef | None = None
     label: str | None = None
+    attrs: tuple[AttrPredicate, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
