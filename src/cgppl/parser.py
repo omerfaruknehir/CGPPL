@@ -13,12 +13,16 @@ from .ast import (
     LiteralValue,
     Program,
     RequireEdgeAttrStmt,
+    RequireEdgeLabelStmt,
     RequireEdgeStmt,
     RequireNodeAttrStmt,
+    RequireNodeLabelStmt,
     RequireNodeStmt,
     RuleDecl,
     SetEdgeAttrStmt,
+    SetEdgeLabelStmt,
     SetNodeAttrStmt,
+    SetNodeLabelStmt,
     SkipStmt,
 )
 from .lexer import Token, TokenKind, tokenize
@@ -105,6 +109,10 @@ class Parser:
                 value = self._parse_literal()
                 self._expect_symbol(";")
                 return RequireNodeAttrStmt(node_id, attr_name, value)
+            if self._match_keyword("label"):
+                label = self._parse_graph_id()
+                self._expect_symbol(";")
+                return RequireNodeLabelStmt(node_id, label)
             self._expect_symbol(";")
             return RequireNodeStmt(node_id)
         if self._match_keyword("edge"):
@@ -115,6 +123,10 @@ class Parser:
                 value = self._parse_literal()
                 self._expect_symbol(";")
                 return RequireEdgeAttrStmt(edge_id, attr_name, value)
+            if self._match_keyword("label"):
+                label = self._parse_graph_id()
+                self._expect_symbol(";")
+                return RequireEdgeLabelStmt(edge_id, label)
             self._expect_symbol(";")
             return RequireEdgeStmt(edge_id)
         token = self._peek()
@@ -135,38 +147,57 @@ class Parser:
     def _parse_add_statement(self) -> object:
         if self._match_keyword("node"):
             node_id = self._parse_graph_id()
+            label = self._parse_optional_label()
             self._expect_symbol(";")
-            return AddNodeStmt(node_id)
+            return AddNodeStmt(node_id, label)
         if self._match_keyword("edge"):
             edge_id = self._parse_graph_id()
             self._expect_keyword("from")
             source_id = self._parse_graph_id()
             self._expect_keyword("to")
             target_id = self._parse_graph_id()
+            label = self._parse_optional_label()
             self._expect_symbol(";")
-            return AddEdgeStmt(edge_id, source_id, target_id)
+            return AddEdgeStmt(edge_id, source_id, target_id, label)
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'add' at {token.location()}")
 
     def _parse_set_statement(self) -> object:
         if self._match_keyword("node"):
             node_id = self._parse_graph_id()
-            self._expect_keyword("attr")
-            attr_name = self._parse_graph_id()
-            self._expect_symbol("=")
-            value = self._parse_literal()
-            self._expect_symbol(";")
-            return SetNodeAttrStmt(node_id, attr_name, value)
+            if self._match_keyword("attr"):
+                attr_name = self._parse_graph_id()
+                self._expect_symbol("=")
+                value = self._parse_literal()
+                self._expect_symbol(";")
+                return SetNodeAttrStmt(node_id, attr_name, value)
+            if self._match_keyword("label"):
+                label = self._parse_graph_id()
+                self._expect_symbol(";")
+                return SetNodeLabelStmt(node_id, label)
+            token = self._peek()
+            raise ParserError(f"expected 'attr' or 'label' after node target at {token.location()}")
         if self._match_keyword("edge"):
             edge_id = self._parse_graph_id()
-            self._expect_keyword("attr")
-            attr_name = self._parse_graph_id()
-            self._expect_symbol("=")
-            value = self._parse_literal()
-            self._expect_symbol(";")
-            return SetEdgeAttrStmt(edge_id, attr_name, value)
+            if self._match_keyword("attr"):
+                attr_name = self._parse_graph_id()
+                self._expect_symbol("=")
+                value = self._parse_literal()
+                self._expect_symbol(";")
+                return SetEdgeAttrStmt(edge_id, attr_name, value)
+            if self._match_keyword("label"):
+                label = self._parse_graph_id()
+                self._expect_symbol(";")
+                return SetEdgeLabelStmt(edge_id, label)
+            token = self._peek()
+            raise ParserError(f"expected 'attr' or 'label' after edge target at {token.location()}")
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'set' at {token.location()}")
+
+    def _parse_optional_label(self) -> str | None:
+        if self._match_keyword("label"):
+            return self._parse_graph_id()
+        return None
 
     def _parse_graph_id(self) -> str:
         parenthesized = self._match_symbol("(")
