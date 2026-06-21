@@ -1,0 +1,8 @@
+program NegativeRequire {
+  rule main => {
+    match node $source label "Root";
+    match node $target label "Candidate";
+    require no edge $blocked from $source to $target label "blocked";
+    set node $target label "Reachable";
+  }
+}
