@@ -6,7 +6,6 @@ from cgppl.ast import (
     MatchNodeStmt,
     RequireNoEdgeStmt,
     RequireNoNodeStmt,
-    SetNodeLabelStmt,
     VarRef,
 )
 from cgppl.graph import Edge, Graph, Node
@@ -16,7 +15,8 @@ from cgppl.runtime import GraphMatchFailed, execute_program
 
 def test_parses_negative_node_requirement_with_matcher_constraints():
     program = parse_program(
-        'program Demo { rule main => require no node $n label "Excluded" attr "kind" = "bad"; }'
+        'program Demo { rule main => '
+        'require no node $n label "Excluded" attr "kind" = "bad"; }'
     )
 
     assert program.rules[0].body == RequireNoNodeStmt(
@@ -26,7 +26,8 @@ def test_parses_negative_node_requirement_with_matcher_constraints():
 
 def test_parses_negative_edge_requirement_with_endpoint_variables():
     program = parse_program(
-        'program Demo { rule main => require no edge $e from $a to $b label "blocked"; }'
+        'program Demo { rule main => '
+        'require no edge $e from $a to $b label "blocked"; }'
     )
 
     assert program.rules[0].body == RequireNoEdgeStmt(
@@ -63,7 +64,9 @@ def test_negative_node_requirement_treats_unbound_variable_as_existential_wildca
 
 def test_negative_node_requirement_fails_when_any_unbound_candidate_matches():
     program = parse_program('program Demo { rule main => require no node $n label "Excluded"; }')
-    graph = Graph(nodes=(Node("a", labels=["Allowed"]), Node("b", labels=["Excluded"])))
+    graph = Graph(
+        nodes=(Node("a", labels=["Allowed"]), Node("b", labels=["Excluded"]))
+    )
 
     with pytest.raises(GraphMatchFailed, match="forbidden node matched"):
         execute_program(program, graph)
@@ -71,8 +74,10 @@ def test_negative_node_requirement_fails_when_any_unbound_candidate_matches():
 
 def test_negative_edge_requirement_respects_previously_bound_endpoint_variables():
     program = parse_program(
-        'program Demo { rule main => { match node $a label "Source"; match node $b label "Target"; '
-        'require no edge $e from $a to $b label "blocked"; set node $a label "Clear"; } }'
+        'program Demo { rule main => { match node $a label "Source"; '
+        'match node $b label "Target"; '
+        'require no edge $e from $a to $b label "blocked"; '
+        'set node $a label "Clear"; } }'
     )
     graph = Graph(
         nodes=(Node("a", labels=["Source"]), Node("b", labels=["Target"])),
@@ -86,7 +91,8 @@ def test_negative_edge_requirement_respects_previously_bound_endpoint_variables(
 
 def test_negative_edge_requirement_fails_when_forbidden_edge_exists():
     program = parse_program(
-        'program Demo { rule main => { match node $a label "Source"; match node $b label "Target"; '
+        'program Demo { rule main => { match node $a label "Source"; '
+        'match node $b label "Target"; '
         'require no edge $e from $a to $b label "blocked"; } }'
     )
     graph = Graph(
