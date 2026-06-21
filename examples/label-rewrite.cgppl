@@ -1,0 +1,9 @@
+program Labels {
+  rule main => {
+    require node "n1" label "Root";
+    require edge "e1" label "link";
+    set node "n2" label "Visited";
+    add node "n3" label "Created";
+    add edge "e2" from "n2" to "n3" label "new";
+  }
+}
