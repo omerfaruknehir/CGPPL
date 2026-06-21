@@ -10,10 +10,13 @@ from .ast import (
     DeleteEdgeStmt,
     DeleteNodeStmt,
     FailStmt,
+    LiteralValue,
     Program,
     RequireEdgeStmt,
     RequireNodeStmt,
     RuleDecl,
+    SetEdgeAttrStmt,
+    SetNodeAttrStmt,
     SkipStmt,
 )
 from .lexer import Token, TokenKind, tokenize
@@ -72,6 +75,8 @@ class Parser:
             return self._parse_delete_statement()
         if self._match_keyword("add"):
             return self._parse_add_statement()
+        if self._match_keyword("set"):
+            return self._parse_set_statement()
 
         token = self._expect(TokenKind.IDENT, TokenKind.KEYWORD)
         if self._match_symbol("("):
@@ -129,12 +134,45 @@ class Parser:
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'add' at {token.location()}")
 
+    def _parse_set_statement(self) -> object:
+        if self._match_keyword("node"):
+            node_id = self._parse_graph_id()
+            self._expect_keyword("attr")
+            attr_name = self._parse_graph_id()
+            self._expect_symbol("=")
+            value = self._parse_literal()
+            self._expect_symbol(";")
+            return SetNodeAttrStmt(node_id, attr_name, value)
+        if self._match_keyword("edge"):
+            edge_id = self._parse_graph_id()
+            self._expect_keyword("attr")
+            attr_name = self._parse_graph_id()
+            self._expect_symbol("=")
+            value = self._parse_literal()
+            self._expect_symbol(";")
+            return SetEdgeAttrStmt(edge_id, attr_name, value)
+        token = self._peek()
+        raise ParserError(f"expected 'node' or 'edge' after 'set' at {token.location()}")
+
     def _parse_graph_id(self) -> str:
         parenthesized = self._match_symbol("(")
         token = self._expect(TokenKind.STRING, TokenKind.IDENT)
         if parenthesized:
             self._expect_symbol(")")
         return token.value
+
+    def _parse_literal(self) -> LiteralValue:
+        token = self._peek()
+        if token.kind is TokenKind.STRING:
+            self.index += 1
+            return token.value
+        if token.kind is TokenKind.INTEGER:
+            self.index += 1
+            return int(token.value)
+        if token.kind is TokenKind.KEYWORD and token.value in {"true", "false"}:
+            self.index += 1
+            return token.value == "true"
+        raise ParserError(f"expected literal value at {token.location()}")
 
     def _match_keyword(self, value: str) -> bool:
         if self._check_keyword(value):
