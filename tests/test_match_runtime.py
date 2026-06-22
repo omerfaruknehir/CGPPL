@@ -35,7 +35,10 @@ def test_match_node_label_fails_when_no_candidate_matches():
     program = parse_program('program Demo { rule main => match node $n label "Root"; }')
     graph = Graph.empty().add_node(Node("a", labels=["Leaf"]))
 
-    with pytest.raises(GraphMatchFailed, match="no node matched"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match=r'no match for node \$n with label "Root" in rule main',
+    ):
         execute_program(program, graph)
 
 
