@@ -15,6 +15,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - multi-label matcher, negative-requirement, and construction clauses
 - variable-bound construction IDs with deterministic fresh-ID generation
 - rule-local construction precondition diagnostics for duplicate IDs and missing edge endpoints
+- parser/AST endpoint construction policy metadata for `add edge` source/target refs
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -101,20 +102,23 @@ Decision: plain `add edge` keeps explicit endpoint preconditions. It does not au
 
 Detailed policy is recorded in [`docs/endpoint-construction-policy.md`](endpoint-construction-policy.md).
 
-Reserved opt-in syntax for future endpoint auto-creation:
+Reserved opt-in syntax for endpoint auto-creation:
 
 ```cgppl
-add edge $edge from add $source to add $target label "new";
+add edge $new_edge from add $source to add $target label "new";
 ```
 
 Implementation status:
 
 1. Done: design decision recorded; default edge construction remains explicit-only.
 2. Done: reserved future syntax and proposed semantics were documented.
-3. Pending: add parser tests for endpoint specs.
-4. Pending: add an `EndpointRef` AST node or equivalent compatibility wrapper.
-5. Pending: update `AddEdgeStmt.source_id` and `AddEdgeStmt.target_id` to carry endpoint policy while preserving existing `GraphRef` behavior.
+3. Done: parser tests cover strict, opt-in, and mixed endpoint policies.
+4. Done: `EndpointRef` records endpoint graph refs plus an `auto_create` flag.
+5. Done: `AddEdgeStmt` exposes `source_endpoint` and `target_endpoint` compatibility properties while preserving existing `source_id` / `target_id` fields.
+6. Done: parser records `from add ...` and `to add ...` as endpoint auto-create metadata without changing runtime semantics.
+7. Pending: runtime endpoint auto-creation semantics.
+8. Pending: runtime tests for opt-in source creation, target creation, mixed policies, existing endpoints, variable binding, and strict precondition preservation.
 
 Next concrete code step:
 
-- Add parser-level coverage for the reserved endpoint syntax and introduce the AST compatibility shape, without changing runtime construction semantics yet.
+- Implement a runtime helper that resolves an endpoint ref. For `auto_create=False`, keep the existing `_resolve_ref` strict behavior. For `auto_create=True`, resolve or generate the endpoint ID, add the node if missing, and bind an unbound endpoint variable before constructing the edge.
