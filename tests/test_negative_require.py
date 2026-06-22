@@ -116,7 +116,7 @@ def test_negative_edge_requirement_fails_when_forbidden_edge_exists():
 
     with pytest.raises(
         GraphMatchFailed,
-        match=r'forbidden match for edge \$e with label "blocked" in rule main',
+        match=r'forbidden match for edge \$e from \$a to \$b with label "blocked" in rule main',
     ):
         execute_program(program, graph)
 
@@ -134,7 +134,7 @@ def test_negative_edge_requirement_formats_variable_in_failure_message():
 
     with pytest.raises(
         GraphMatchFailed,
-        match=r'forbidden match for edge \$e with label "blocked" in rule main',
+        match=r'forbidden match for edge \$e from \$a to \$b with label "blocked" in rule main',
     ):
         execute_program(program, graph)
 

@@ -7,7 +7,7 @@ def test_bound_node_matcher_failure_reports_structured_predicate_context():
     program = parse_program(
         'program Demo { rule main => { '
         'match node $n label "Root"; '
-        'match node $n label "Selected" where attr("rank") >= 2; '
+        'match node $n label "Chosen" where attr("rank") >= 2; '
         '} }'
     )
     graph = Graph(nodes=(Node("root", labels=("Root",), attrs=(("rank", 1),)),))
@@ -16,7 +16,7 @@ def test_bound_node_matcher_failure_reports_structured_predicate_context():
         execute_program(program, graph)
     except GraphMatchFailed as error:
         assert str(error) == (
-            'no match for node $n with label "Selected", '
+            'no match for node $n with label "Chosen", '
             'where attr "rank" >= 2 in rule main'
         )
     else:
@@ -26,8 +26,8 @@ def test_bound_node_matcher_failure_reports_structured_predicate_context():
 def test_bound_edge_matcher_failure_reports_structured_predicate_context():
     program = parse_program(
         'program Demo { rule main => { '
-        'match edge $e from "a" to "b" label "link"; '
-        'match edge $e from "a" to "b" label "selected" where attr("weight") >= 2; '
+        'match edge $e label "link"; '
+        'match edge $e label "chosen" where attr("weight") >= 2; '
         '} }'
     )
     graph = Graph(
@@ -39,7 +39,7 @@ def test_bound_edge_matcher_failure_reports_structured_predicate_context():
         execute_program(program, graph)
     except GraphMatchFailed as error:
         assert str(error) == (
-            'no match for edge $e with label "selected", '
+            'no match for edge $e with label "chosen", '
             'where attr "weight" >= 2 in rule main'
         )
     else:

@@ -56,17 +56,31 @@ def test_formats_graph_predicate_constraints():
     )
 
 
+def test_formats_edge_endpoint_constraints():
+    predicate = format_graph_predicate(
+        "edge",
+        VarRef("e"),
+        source_id=VarRef("source"),
+        target_id="target",
+        labels=("blocked",),
+    )
+
+    assert predicate == 'edge $e from $source to "target" with label "blocked"'
+
+
 def test_formats_full_graph_predicate_failures_with_rule_context():
     message = format_graph_predicate_failure(
         "no match for",
         "edge",
         VarRef("e"),
+        source_id=VarRef("source"),
+        target_id=VarRef("target"),
         labels=("blocked",),
         where=(WherePredicate(FieldExpr("source"), "==", VarExpr("source")),),
         call_stack=("main",),
     )
 
     assert message == (
-        'no match for edge $e with label "blocked", '
+        'no match for edge $e from $source to $target with label "blocked", '
         'where field source == $source in rule main'
     )

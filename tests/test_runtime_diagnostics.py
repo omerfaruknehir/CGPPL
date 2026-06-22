@@ -43,7 +43,7 @@ def test_formats_match_edge_failure_with_constraints():
     )
 
     assert format_match_edge_failure(statement, ("main", "helper")) == (
-        'no match for edge $e with label "new", '
+        'no match for edge $e from $source to "target" with label "new", '
         'where field source == $source in rule main -> helper'
     )
 
@@ -64,11 +64,13 @@ def test_formats_forbidden_node_failure_with_constraints():
 def test_formats_forbidden_edge_failure_with_constraints():
     statement = RequireNoEdgeStmt(
         VarRef("e"),
+        source_id=VarRef("source"),
+        target_id=VarRef("target"),
         labels=("blocked",),
         where=(WherePredicate(FieldExpr("target"), "!=", VarExpr("target")),),
     )
 
     assert format_forbidden_edge_failure(statement, ("main",)) == (
-        'forbidden match for edge $e with label "blocked", '
+        'forbidden match for edge $e from $source to $target with label "blocked", '
         'where field target != $target in rule main'
     )

@@ -70,13 +70,20 @@ def format_graph_predicate(
     kind: str,
     ref: GraphRef,
     *,
+    source_id: GraphRef | None = None,
+    target_id: GraphRef | None = None,
     labels: tuple[str, ...] = (),
     attrs: tuple[AttrPredicate, ...] = (),
     where: tuple[WherePredicate, ...] = (),
 ) -> str:
-    """Format a node/edge predicate with its labels, attrs, and where clauses."""
+    """Format a node/edge predicate with endpoints, labels, attrs, and where clauses."""
 
     pieces = [f"{kind} {format_graph_ref(ref)}"]
+    if source_id is not None:
+        pieces.append(f"from {format_graph_ref(source_id)}")
+    if target_id is not None:
+        pieces.append(f"to {format_graph_ref(target_id)}")
+
     constraints: list[str] = []
     constraints.extend(f"label {json.dumps(label)}" for label in labels)
     constraints.extend(
@@ -94,6 +101,8 @@ def format_graph_predicate_failure(
     kind: str,
     ref: GraphRef,
     *,
+    source_id: GraphRef | None = None,
+    target_id: GraphRef | None = None,
     labels: tuple[str, ...] = (),
     attrs: tuple[AttrPredicate, ...] = (),
     where: tuple[WherePredicate, ...] = (),
@@ -101,5 +110,13 @@ def format_graph_predicate_failure(
 ) -> str:
     """Format a full rule-local graph predicate failure message."""
 
-    predicate = format_graph_predicate(kind, ref, labels=labels, attrs=attrs, where=where)
+    predicate = format_graph_predicate(
+        kind,
+        ref,
+        source_id=source_id,
+        target_id=target_id,
+        labels=labels,
+        attrs=attrs,
+        where=where,
+    )
     return f"{action} {predicate} in rule {format_rule_location(call_stack)}"
