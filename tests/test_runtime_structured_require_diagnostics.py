@@ -17,12 +17,12 @@ def test_require_node_runtime_failure_reports_structured_context():
 
 @pytest.mark.xfail(reason="positive require runtime paths are not wired to structured diagnostics yet")
 def test_require_edge_runtime_failure_reports_structured_context():
-    program = parse_program('program Demo { rule main => require edge $e; }')
+    program = parse_program('program Demo { rule main => require edge "missing"; }')
 
     with pytest.raises(GraphMatchFailed) as error:
         execute_program(program, Graph.empty())
 
-    assert str(error.value) == "unbound edge variable $e in rule main"
+    assert str(error.value) == 'missing requirement for edge "missing" in rule main'
 
 
 @pytest.mark.xfail(reason="positive require runtime paths are not wired to structured diagnostics yet")
