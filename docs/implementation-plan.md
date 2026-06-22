@@ -95,18 +95,26 @@ Implementation status:
 4. Done: tests cover duplicate-ID diagnostics, missing-endpoint diagnostics, and `try-or` fallback after construction precondition failure.
 5. Done: README status and notes were updated.
 
-## Next feature slice: endpoint construction policy
+## In-progress feature slice: endpoint construction policy
 
-The next useful slice is deciding whether edge construction should keep explicit endpoint preconditions or grow an opt-in auto-create endpoint form.
+Decision: plain `add edge` keeps explicit endpoint preconditions. It does not auto-create missing endpoint nodes. This avoids silently creating misspelled or weakly matched nodes and keeps node creation visible in rewrite programs.
 
-Candidate syntax if auto-create is added:
+Detailed policy is recorded in [`docs/endpoint-construction-policy.md`](endpoint-construction-policy.md).
+
+Reserved opt-in syntax for future endpoint auto-creation:
 
 ```cgppl
-add edge $e from add $source to add $target label "new";
+add edge $edge from add $source to add $target label "new";
 ```
 
-Practical first step:
+Implementation status:
 
-1. Add a design note comparing explicit endpoints versus opt-in auto-create endpoints.
-2. Choose the smaller semantics-preserving form.
-3. Add parser tests for the chosen syntax before changing runtime behavior.
+1. Done: design decision recorded; default edge construction remains explicit-only.
+2. Done: reserved future syntax and proposed semantics were documented.
+3. Pending: add parser tests for endpoint specs.
+4. Pending: add an `EndpointRef` AST node or equivalent compatibility wrapper.
+5. Pending: update `AddEdgeStmt.source_id` and `AddEdgeStmt.target_id` to carry endpoint policy while preserving existing `GraphRef` behavior.
+
+Next concrete code step:
+
+- Add parser-level coverage for the reserved endpoint syntax and introduce the AST compatibility shape, without changing runtime construction semantics yet.
