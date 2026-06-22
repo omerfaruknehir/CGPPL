@@ -255,7 +255,10 @@ def test_set_node_attr_statement_supports_boolean_values():
 def test_set_node_attr_statement_fails_when_node_is_missing():
     program = parse_program('program Demo { rule main => set node "missing" attr "kind" = "new"; }')
 
-    with pytest.raises(GraphMatchFailed, match="set node target not found: missing"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match='missing set target for node "missing" with attr "kind" in rule main',
+    ):
         execute_program(program, Graph.empty())
 
 
@@ -285,7 +288,10 @@ def test_set_edge_label_statement_adds_label_immutably():
 def test_set_edge_label_statement_fails_when_edge_is_missing():
     program = parse_program('program Demo { rule main => set edge "missing" label "selected"; }')
 
-    with pytest.raises(GraphMatchFailed, match="set edge target not found: missing"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match='missing set target for edge "missing" with label "selected" in rule main',
+    ):
         execute_program(program, Graph.empty())
 
 
