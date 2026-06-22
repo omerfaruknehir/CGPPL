@@ -47,7 +47,7 @@ def test_require_edge_statement_succeeds_when_edge_exists():
 def test_require_node_statement_fails_when_node_is_missing():
     program = parse_program('program Demo { rule main => require node "missing"; }')
 
-    with pytest.raises(GraphMatchFailed, match="required node not found: missing"):
+    with pytest.raises(GraphMatchFailed, match='missing requirement for node "missing" in rule main'):
         execute_program(program, Graph.empty())
 
 
@@ -79,7 +79,10 @@ def test_require_node_attr_statement_is_type_sensitive():
     program = parse_program('program Demo { rule main => require node "a" attr "flag" = true; }')
     graph = Graph.empty().add_node(Node("a", attrs={"flag": 1}))
 
-    with pytest.raises(GraphMatchFailed, match="required node attribute mismatch"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match='missing requirement for node "a" with attr "flag" = true; found 1 in rule main',
+    ):
         execute_program(program, graph)
 
 
@@ -87,7 +90,10 @@ def test_require_node_attr_statement_fails_when_value_differs():
     program = parse_program('program Demo { rule main => require node "a" attr "kind" = "root"; }')
     graph = Graph.empty().add_node(Node("a", attrs={"kind": "leaf"}))
 
-    with pytest.raises(GraphMatchFailed, match="required node attribute mismatch"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match='missing requirement for node "a" with attr "kind" = "root"; found "leaf" in rule main',
+    ):
         execute_program(program, graph)
 
 
@@ -95,7 +101,10 @@ def test_require_edge_attr_statement_fails_when_attr_is_missing():
     program = parse_program('program Demo { rule main => require edge "e1" attr "weight" = 2; }')
     graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
 
-    with pytest.raises(GraphMatchFailed, match="required edge attribute mismatch"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match='missing requirement for edge "e1" with attr "weight" = 2; found <missing> in rule main',
+    ):
         execute_program(program, graph)
 
 
@@ -120,7 +129,7 @@ def test_require_node_label_statement_fails_when_label_is_missing():
     program = parse_program('program Demo { rule main => require node "a" label "Root"; }')
     graph = Graph.empty().add_node(Node("a", labels=["Leaf"]))
 
-    with pytest.raises(GraphMatchFailed, match="required node label missing"):
+    with pytest.raises(GraphMatchFailed, match='missing requirement for node "a" with label "Root" in rule main'):
         execute_program(program, graph)
 
 
@@ -128,7 +137,7 @@ def test_require_edge_label_statement_fails_when_label_is_missing():
     program = parse_program('program Demo { rule main => require edge "e1" label "link"; }')
     graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
 
-    with pytest.raises(GraphMatchFailed, match="required edge label missing"):
+    with pytest.raises(GraphMatchFailed, match='missing requirement for edge "e1" with label "link" in rule main'):
         execute_program(program, graph)
 
 
@@ -351,7 +360,7 @@ def test_block_statement_stops_at_first_failure():
     )
     graph = Graph.empty().add_node(Node("a"))
 
-    with pytest.raises(GraphMatchFailed, match="required node not found: missing"):
+    with pytest.raises(GraphMatchFailed, match='missing requirement for node "missing" in rule main'):
         execute_program(program, graph)
 
     assert graph.node_ids == ("a",)
