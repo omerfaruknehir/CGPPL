@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from .ast import (
     AttrPredicate,
+    GraphRef,
     LiteralValue,
     MatchEdgeStmt,
     MatchNodeStmt,
@@ -164,7 +165,7 @@ def format_required_edge_attr_failure(
 
 def _format_required_attr_failure(
     kind: str,
-    ref: object,
+    ref: GraphRef,
     predicate: AttrPredicate,
     actual: LiteralValue | None,
     call_stack: tuple[str, ...],
