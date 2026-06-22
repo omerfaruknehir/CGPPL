@@ -3,12 +3,12 @@ from cgppl.parser import parse_program
 
 
 def test_parses_strict_edge_constructor_endpoints_as_default_policy():
-    program = parse_program('program Demo { rule main => add edge $edge from $source to "target" label "new"; }')
+    program = parse_program('program Demo { rule main => add edge $e from $source to "target" label "new"; }')
 
     statement = program.rules[0].body
 
     assert statement == AddEdgeStmt(
-        VarRef("edge"),
+        VarRef("e"),
         VarRef("source"),
         "target",
         labels=("new",),
@@ -19,13 +19,13 @@ def test_parses_strict_edge_constructor_endpoints_as_default_policy():
 
 def test_parses_opt_in_auto_create_endpoint_markers():
     program = parse_program(
-        'program Demo { rule main => add edge $edge from add $source to add $target label "new"; }'
+        'program Demo { rule main => add edge $e from add $source to add $target label "new"; }'
     )
 
     statement = program.rules[0].body
 
     assert statement == AddEdgeStmt(
-        VarRef("edge"),
+        VarRef("e"),
         VarRef("source"),
         VarRef("target"),
         labels=("new",),
@@ -37,7 +37,7 @@ def test_parses_opt_in_auto_create_endpoint_markers():
 
 
 def test_parses_mixed_endpoint_marker_policy():
-    program = parse_program('program Demo { rule main => add edge $edge from add "source" to $target; }')
+    program = parse_program('program Demo { rule main => add edge $e from add "source" to $target; }')
 
     statement = program.rules[0].body
 
