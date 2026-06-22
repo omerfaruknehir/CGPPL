@@ -17,7 +17,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - shared source-like diagnostic formatting helpers for graph refs, literals, constraints, and rule locations
-- runtime-specific structured diagnostics for matcher and negative-requirement failures
+- runtime-specific structured diagnostics for matcher, negative-requirement, and positive-requirement helper paths
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -144,7 +144,7 @@ Implementation status:
 5. Done: wired matcher and negative-requirement runtime failure paths to the runtime diagnostic adapters.
 6. Done: added regression tests proving actual runtime failure messages use the structured helpers for fresh matchers, bound matchers, and negative requirements.
 
-## In-progress feature slice: edge endpoint diagnostics
+## Completed feature slice: edge endpoint diagnostics
 
 This slice extends structured edge diagnostics so endpoint predicates are visible in failure messages.
 
@@ -160,8 +160,29 @@ Implementation status:
 1. Done: shared graph-predicate formatting accepts optional `source_id` and `target_id` refs.
 2. Done: runtime diagnostic adapters pass edge source/target refs for edge matcher and negative-edge failures.
 3. Done: unit/runtime tests cover endpoint-aware edge diagnostic messages.
-4. Pending: verify CI and merge the endpoint diagnostics slice.
+4. Done: CI passed and the endpoint diagnostics slice was merged.
+
+## In-progress feature slice: positive require diagnostics
+
+This slice extends the structured diagnostic adapter layer to positive `require` statements before wiring runtime behavior.
+
+Target diagnostic shape:
+
+```text
+missing requirement for node "missing" in rule main
+missing requirement for edge $e with label "link" in rule main
+missing requirement for node "n1" with attr "kind" = "root"; found "leaf" in rule main
+```
+
+Implementation status:
+
+1. Done: runtime diagnostic adapter helpers cover missing node, missing edge, missing node label, missing edge label, node attribute mismatch, and edge attribute mismatch messages.
+2. Done: unit tests cover the new positive-require adapter helpers.
+3. Done: runtime regression tests document the target messages and remain marked `xfail` until runtime wiring lands.
+4. Pending: wire `src/cgppl/runtime.py` positive-require failure branches to the adapter helpers.
+5. Pending: remove the `xfail` markers after runtime wiring.
+6. Pending: update stale CLI/runtime expectations that still assert older messages such as `required node not found`, `required node label missing`, and `required node attribute mismatch`.
 
 Next concrete code step:
 
-- After CI passes, merge this slice and start structured diagnostics for positive `require node` / `require edge` label and attribute failures.
+- Update `src/cgppl/runtime.py` to import and call `format_required_node_failure`, `format_required_edge_failure`, `format_required_node_label_failure`, `format_required_edge_label_failure`, `format_required_node_attr_failure`, and `format_required_edge_attr_failure`, then update stale expectations and remove the positive-require `xfail` markers.
