@@ -15,6 +15,14 @@ from cgppl.ast import (
     RequireNodeAttrStmt,
     RequireNodeLabelStmt,
     RequireNodeStmt,
+    SetEdgeAttrStmt,
+    SetEdgeLabelStmt,
+    SetNodeAttrStmt,
+    SetNodeLabelStmt,
+    UnsetEdgeAttrStmt,
+    UnsetEdgeLabelStmt,
+    UnsetNodeAttrStmt,
+    UnsetNodeLabelStmt,
     VarExpr,
     VarRef,
     WherePredicate,
@@ -26,6 +34,14 @@ from cgppl.runtime_diagnostics import (
     format_match_node_failure,
     format_missing_delete_edge_target_failure,
     format_missing_delete_node_target_failure,
+    format_missing_set_edge_attr_target_failure,
+    format_missing_set_edge_label_target_failure,
+    format_missing_set_node_attr_target_failure,
+    format_missing_set_node_label_target_failure,
+    format_missing_unset_edge_attr_target_failure,
+    format_missing_unset_edge_label_target_failure,
+    format_missing_unset_node_attr_target_failure,
+    format_missing_unset_node_label_target_failure,
     format_required_edge_attr_failure,
     format_required_edge_failure,
     format_required_edge_label_failure,
@@ -156,6 +172,70 @@ def test_formats_missing_delete_edge_target_failure():
 
     assert format_missing_delete_edge_target_failure(statement, ("main", "helper")) == (
         "missing delete target for edge $e in rule main -> helper"
+    )
+
+
+def test_formats_missing_set_node_attr_target_failure():
+    statement = SetNodeAttrStmt("missing", "kind", "new")
+
+    assert format_missing_set_node_attr_target_failure(statement, ("main",)) == (
+        'missing set target for node "missing" with attr "kind" in rule main'
+    )
+
+
+def test_formats_missing_set_edge_attr_target_failure():
+    statement = SetEdgeAttrStmt(VarRef("e"), "weight", 2)
+
+    assert format_missing_set_edge_attr_target_failure(statement, ("main", "helper")) == (
+        'missing set target for edge $e with attr "weight" in rule main -> helper'
+    )
+
+
+def test_formats_missing_set_node_label_target_failure():
+    statement = SetNodeLabelStmt("missing", "Visited")
+
+    assert format_missing_set_node_label_target_failure(statement, ("main",)) == (
+        'missing set target for node "missing" with label "Visited" in rule main'
+    )
+
+
+def test_formats_missing_set_edge_label_target_failure():
+    statement = SetEdgeLabelStmt(VarRef("e"), "selected")
+
+    assert format_missing_set_edge_label_target_failure(statement, ("main",)) == (
+        'missing set target for edge $e with label "selected" in rule main'
+    )
+
+
+def test_formats_missing_unset_node_attr_target_failure():
+    statement = UnsetNodeAttrStmt("missing", "kind")
+
+    assert format_missing_unset_node_attr_target_failure(statement, ("main",)) == (
+        'missing unset target for node "missing" with attr "kind" in rule main'
+    )
+
+
+def test_formats_missing_unset_edge_attr_target_failure():
+    statement = UnsetEdgeAttrStmt(VarRef("e"), "weight")
+
+    assert format_missing_unset_edge_attr_target_failure(statement, ("main",)) == (
+        'missing unset target for edge $e with attr "weight" in rule main'
+    )
+
+
+def test_formats_missing_unset_node_label_target_failure():
+    statement = UnsetNodeLabelStmt("missing", "Visited")
+
+    assert format_missing_unset_node_label_target_failure(statement, ("main", "cleanup")) == (
+        'missing unset target for node "missing" with label "Visited" in rule main -> cleanup'
+    )
+
+
+def test_formats_missing_unset_edge_label_target_failure():
+    statement = UnsetEdgeLabelStmt(VarRef("e"), "selected")
+
+    assert format_missing_unset_edge_label_target_failure(statement, ("main",)) == (
+        'missing unset target for edge $e with label "selected" in rule main'
     )
 
 
