@@ -17,6 +17,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - shared source-like diagnostic formatting helpers for graph refs, literals, constraints, and rule locations
+- runtime-specific diagnostic adapter helpers for matcher and negative-requirement failures
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -138,9 +139,11 @@ Implementation status:
 
 1. Done: added `src/cgppl/diagnostics.py` with shared formatting helpers for graph refs, literals, where predicates, graph predicate constraints, graph predicate failures, and rule call-stack locations.
 2. Done: added unit coverage for diagnostic formatting behavior.
-3. Pending: wire the runtime's matcher and requirement failure paths to the shared helper.
-4. Pending: add regression tests for multi-label and `where` predicate failure messages after runtime wiring.
+3. Done: added `src/cgppl/runtime_diagnostics.py` with runtime-specific adapters for node/edge matcher failures and negative node/edge requirement failures.
+4. Done: added unit coverage for runtime diagnostic adapter output with labels, attrs, `where` predicates, and nested rule locations.
+5. Pending: wire the runtime's matcher and negative-requirement failure paths to the runtime diagnostic adapters.
+6. Pending: add regression tests proving actual runtime failure messages use the structured helpers.
 
 Next concrete code step:
 
-- Replace runtime-local `_format_value()`, `_format_graph_ref()`, and direct matcher/requirement failure strings with the new diagnostic helpers, starting with `MatchNodeStmt`, `MatchEdgeStmt`, `RequireNoNodeStmt`, and `RequireNoEdgeStmt`.
+- Import `format_match_node_failure`, `format_match_edge_failure`, `format_forbidden_node_failure`, and `format_forbidden_edge_failure` in `src/cgppl/runtime.py`, then replace the direct failure strings in `MatchNodeStmt`, `MatchEdgeStmt`, `RequireNoNodeStmt`, and `RequireNoEdgeStmt` paths.
