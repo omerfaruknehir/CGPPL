@@ -220,6 +220,41 @@ def test_run_command_can_set_graph_attributes(tmp_path, capsys):
     }
 
 
+def test_run_command_can_auto_create_edge_endpoints(tmp_path, capsys):
+    source_path = tmp_path / "endpoint-auto-create.cgppl"
+    source_path.write_text(
+        'program EndpointAutoCreate { rule main => { '
+        'add edge $created_edge from add $source to add $target label "created"; '
+        'set node $source label "AutoSource"; '
+        'set node $target label "AutoTarget"; '
+        '} }',
+        encoding="utf-8",
+    )
+
+    graph_path = tmp_path / "graph.json"
+    graph_path.write_text(json.dumps({"nodes": [], "edges": []}), encoding="utf-8")
+
+    exit_code = main(["run", str(source_path), "--graph", str(graph_path), "--compact"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert json.loads(captured.out) == {
+        "nodes": [
+            {"id": "source", "labels": ["AutoSource"], "attrs": {}},
+            {"id": "target", "labels": ["AutoTarget"], "attrs": {}},
+        ],
+        "edges": [
+            {
+                "id": "created_edge",
+                "source": "source",
+                "target": "target",
+                "labels": ["created"],
+                "attrs": {},
+            }
+        ],
+    }
+
+
 def test_run_command_reports_failed_graph_requirement(tmp_path, capsys):
     source_path = tmp_path / "require-node.cgppl"
     source_path.write_text('program Check { rule main => require node "missing"; }', encoding="utf-8")
