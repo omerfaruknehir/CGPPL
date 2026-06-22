@@ -167,7 +167,10 @@ def format_required_edge_attr_failure(
     )
 
 
-def format_missing_delete_node_target_failure(statement: DeleteNodeStmt, call_stack: tuple[str, ...]) -> str:
+def format_missing_delete_node_target_failure(
+    statement: DeleteNodeStmt,
+    call_stack: tuple[str, ...],
+) -> str:
     """Format a failed delete-node mutation target lookup."""
 
     return format_graph_predicate_failure(
@@ -178,7 +181,10 @@ def format_missing_delete_node_target_failure(statement: DeleteNodeStmt, call_st
     )
 
 
-def format_missing_delete_edge_target_failure(statement: DeleteEdgeStmt, call_stack: tuple[str, ...]) -> str:
+def format_missing_delete_edge_target_failure(
+    statement: DeleteEdgeStmt,
+    call_stack: tuple[str, ...],
+) -> str:
     """Format a failed delete-edge mutation target lookup."""
 
     return format_graph_predicate_failure(
