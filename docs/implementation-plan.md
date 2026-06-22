@@ -18,6 +18,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - shared source-like diagnostic formatting helpers for graph refs, literals, constraints, where expressions, and rule locations
 - direct runtime structured diagnostics for matcher, negative-requirement, positive-requirement, and unbound `where` variable paths
+- adapter-backed structured diagnostics for delete-target mutation failures
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -195,9 +196,9 @@ Implementation status:
 3. Done: formatter and runtime regression tests cover the emitted message.
 4. Done: CI passed and the where-variable diagnostic slice was merged.
 
-## In-progress feature slice: mutation target structured diagnostics
+## Completed feature slice: mutation target structured diagnostics
 
-This slice extends structured diagnostics to mutation target lookups that still use direct runtime strings.
+This slice extends structured diagnostics to delete-target mutation lookups.
 
 Target diagnostic shape:
 
@@ -210,9 +211,15 @@ Implementation status:
 
 1. Done: added `format_missing_delete_node_target_failure(...)` and `format_missing_delete_edge_target_failure(...)` to the runtime diagnostic helper layer.
 2. Done: unit tests cover the new delete-target diagnostic helpers.
-3. Done: added xfail runtime regression tests for literal and bound delete-node/delete-edge target failures.
-4. Pending: wire `DeleteNodeStmt` and `DeleteEdgeStmt` in `src/cgppl/runtime.py` to the new helpers.
+3. Done: runtime regression tests cover literal and bound delete-node/delete-edge target failures.
+4. Done: a narrow runtime adapter wires `DeleteNodeStmt` and `DeleteEdgeStmt` missing-target paths to the structured helpers.
+5. Done: stale runtime expectations were updated from the legacy `delete node target not found` wording.
+6. Done: CI passed and the delete-target diagnostics slice was merged.
+
+## In-progress cleanup slice: direct delete-target runtime wiring
+
+The delete-target diagnostics currently work through `src/cgppl/runtime_delete_target_wiring.py`. This matches the incremental adapter pattern used earlier, but it should be folded into canonical runtime dispatch.
 
 Next concrete code step:
 
-- Import the delete-target helpers in `src/cgppl/runtime.py`, replace the direct `delete node target not found` and `delete edge target not found` strings, then remove the xfail markers from `tests/test_runtime_structured_delete_diagnostics.py`.
+- Create `delete-target-direct-runtime-wiring`, import the delete-target helpers directly in `src/cgppl/runtime.py`, replace the `DeleteNodeStmt` and `DeleteEdgeStmt` direct missing-target strings there, delete `src/cgppl/runtime_delete_target_wiring.py`, and remove its installer from `src/cgppl/__init__.py`.
