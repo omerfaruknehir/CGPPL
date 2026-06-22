@@ -46,7 +46,7 @@ def test_negative_node_requirement_fails_when_literal_node_exists():
     program = parse_program('program Demo { rule main => require no node "a"; }')
     graph = Graph.empty().add_node(Node("a"))
 
-    with pytest.raises(GraphMatchFailed, match="forbidden node matched"):
+    with pytest.raises(GraphMatchFailed, match=r'forbidden match for node "a" in rule main'):
         execute_program(program, graph)
 
 
@@ -54,7 +54,10 @@ def test_negative_node_requirement_formats_variable_in_failure_message():
     program = parse_program('program Demo { rule main => require no node $n label "Excluded"; }')
     graph = Graph.empty().add_node(Node("a", labels=["Excluded"]))
 
-    with pytest.raises(GraphMatchFailed, match=r"forbidden node matched \$n in rule main"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match=r'forbidden match for node \$n with label "Excluded" in rule main',
+    ):
         execute_program(program, graph)
 
 
@@ -76,7 +79,7 @@ def test_negative_node_requirement_fails_when_any_unbound_candidate_matches():
         nodes=(Node("a", labels=["Allowed"]), Node("b", labels=["Excluded"]))
     )
 
-    with pytest.raises(GraphMatchFailed, match="forbidden node matched"):
+    with pytest.raises(GraphMatchFailed, match="forbidden match for node"):
         execute_program(program, graph)
 
 
@@ -108,7 +111,7 @@ def test_negative_edge_requirement_fails_when_forbidden_edge_exists():
         edges=(Edge("e1", "a", "b", labels=["blocked"]),),
     )
 
-    with pytest.raises(GraphMatchFailed, match="forbidden edge matched"):
+    with pytest.raises(GraphMatchFailed, match="forbidden match for edge"):
         execute_program(program, graph)
 
 
@@ -123,7 +126,10 @@ def test_negative_edge_requirement_formats_variable_in_failure_message():
         edges=(Edge("e1", "a", "b", labels=["blocked"]),),
     )
 
-    with pytest.raises(GraphMatchFailed, match=r"forbidden edge matched \$e in rule main"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match=r'forbidden match for edge \$e with label "blocked" in rule main',
+    ):
         execute_program(program, graph)
 
 
