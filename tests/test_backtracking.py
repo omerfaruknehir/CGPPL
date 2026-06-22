@@ -48,7 +48,10 @@ def test_match_node_attribute_predicate_is_type_sensitive():
     program = parse_program('program Demo { rule main => match node $n attr "flag" = true; }')
     graph = Graph.empty().add_node(Node("n1", attrs={"flag": 1}))
 
-    with pytest.raises(RuleFailed, match="no node matched"):
+    with pytest.raises(
+        RuleFailed,
+        match=r'no match for node \$n with attr "flag" = true in rule main',
+    ):
         execute_program(program, graph)
 
 
