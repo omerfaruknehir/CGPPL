@@ -1,6 +1,6 @@
 # Positive require runtime diagnostics wiring
 
-Positive `require` statements now have runtime wiring for the same structured diagnostic style already used by matchers and negative requirements.
+Positive `require` statements now have direct runtime wiring for the same structured diagnostic style already used by matchers and negative requirements.
 
 Covered runtime paths:
 
@@ -11,4 +11,4 @@ Covered runtime paths:
 - `require node ... attr ...`
 - `require edge ... attr ...`
 
-The current implementation uses a narrow runtime adapter installed during package initialization. This keeps the feature slice small while preserving the existing runtime surface. A future cleanup should fold the adapter directly into `src/cgppl/runtime.py` and remove the import-time patch module.
+The previous import-time adapter has been folded into `src/cgppl/runtime.py`, so package initialization no longer mutates runtime dispatch. Positive-require failures now call the `format_required_*_failure` helpers directly from the canonical runtime statement dispatcher.
