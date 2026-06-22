@@ -14,8 +14,9 @@ Implemented pieces:
 - Immutable graph IR with node/edge records, labels, attributes, endpoint validation, serialization, and immutable update/removal helpers.
 - Semantic validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
 - Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, negative graph requirements, multi-label graph predicates/construction, variable-bound construction IDs, and rule-local construction precondition diagnostics.
+- Parser/AST metadata for explicit endpoint construction policy on `add edge` source/target refs.
 - CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
-- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, variable-bound construction IDs, and construction precondition diagnostics.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, variable-bound construction IDs, construction precondition diagnostics, and endpoint construction parser metadata.
 
 ## Local development
 
@@ -80,6 +81,7 @@ rule main => add node $replacement label "Generated";
 rule main => add edge "e2" from $n to "n3" label "new";
 rule main => add edge "e2" from $n to "n3" label "new" label "owned" attr "weight" = 1;
 rule main => add edge $new_edge from $n to $replacement label "new";
+rule main => add edge $new_edge from add $source to add $target label "new";
 rule main => set node $n attr "kind" = "replacement";
 rule main => set edge $e attr "weight" = 1;
 rule main => set node $n label "Visited";
@@ -132,14 +134,17 @@ rule main => try {
 - `add node` and `add edge` can construct labels and attributes in a single statement; duplicate inline attribute names and duplicate label clauses in the same predicate/constructor are rejected by the parser.
 - Construction targets may be literal IDs or `$variables`. Bound variables resolve to their existing binding. Unbound construction target variables generate deterministic fresh IDs from the variable name, then bind that variable for later statements; for example, `$replacement` tries `replacement`, then `replacement_2`, `replacement_3`, and so on.
 - Construction duplicate-ID and missing-endpoint failures are reported as rule-local failures, so they include rule context and can be handled by `try-or` fallback branches.
-- Plain `add edge` keeps explicit endpoint preconditions: source and target nodes must already exist. Endpoint auto-creation is reserved for a future opt-in syntax, documented in `docs/endpoint-construction-policy.md`.
+- Plain `add edge` keeps explicit endpoint preconditions: source and target nodes must already exist.
+- The reserved opt-in endpoint syntax `from add ...` / `to add ...` now parses and records endpoint policy metadata, but runtime endpoint auto-creation is not implemented yet.
 - `try-or` rolls back graph and variable changes from the failed branch before trying the fallback branch.
 - `unset` is idempotent for missing labels/attributes but still fails if the target node or edge does not exist.
 
 ## Next implementation step
 
-Implement the AST/parser compatibility slice for endpoint specs. The first code change should add an `EndpointRef` shape for `AddEdgeStmt.source_id` and `AddEdgeStmt.target_id`, keep existing endpoint syntax compatible, and add parser tests for the reserved opt-in form:
+Implement runtime semantics for endpoint auto-creation metadata:
 
 ```cgppl
-add edge $edge from add $source to add $target label "new";
+add edge $new_edge from add $source to add $target label "new";
 ```
+
+The runtime should create or ensure endpoint nodes before adding the edge, bind unbound endpoint variables, and keep strict precondition behavior for endpoints without `add`.
