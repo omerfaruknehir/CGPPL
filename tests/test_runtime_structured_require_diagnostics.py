@@ -1,3 +1,5 @@
+import pytest
+
 from cgppl.graph import Edge, Graph, Node
 from cgppl.parser import parse_program
 from cgppl.runtime import GraphMatchFailed, execute_program
