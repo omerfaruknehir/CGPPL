@@ -5,8 +5,14 @@ from cgppl.ast import (
     LiteralExpr,
     MatchEdgeStmt,
     MatchNodeStmt,
+    RequireEdgeAttrStmt,
+    RequireEdgeLabelStmt,
+    RequireEdgeStmt,
     RequireNoEdgeStmt,
     RequireNoNodeStmt,
+    RequireNodeAttrStmt,
+    RequireNodeLabelStmt,
+    RequireNodeStmt,
     VarExpr,
     VarRef,
     WherePredicate,
@@ -16,6 +22,12 @@ from cgppl.runtime_diagnostics import (
     format_forbidden_node_failure,
     format_match_edge_failure,
     format_match_node_failure,
+    format_required_edge_attr_failure,
+    format_required_edge_failure,
+    format_required_edge_label_failure,
+    format_required_node_attr_failure,
+    format_required_node_failure,
+    format_required_node_label_failure,
 )
 
 
@@ -73,4 +85,54 @@ def test_formats_forbidden_edge_failure_with_constraints():
     assert format_forbidden_edge_failure(statement, ("main",)) == (
         'forbidden match for edge $e from $source to $target with label "blocked", '
         'where field target != $target in rule main'
+    )
+
+
+def test_formats_required_node_failure():
+    statement = RequireNodeStmt("missing")
+
+    assert format_required_node_failure(statement, ("main",)) == (
+        'missing requirement for node "missing" in rule main'
+    )
+
+
+def test_formats_required_edge_failure():
+    statement = RequireEdgeStmt(VarRef("e"))
+
+    assert format_required_edge_failure(statement, ("main", "helper")) == (
+        "missing requirement for edge $e in rule main -> helper"
+    )
+
+
+def test_formats_required_node_label_failure():
+    statement = RequireNodeLabelStmt("n1", "Root")
+
+    assert format_required_node_label_failure(statement, ("main",)) == (
+        'missing requirement for node "n1" with label "Root" in rule main'
+    )
+
+
+def test_formats_required_edge_label_failure():
+    statement = RequireEdgeLabelStmt(VarRef("e"), "link")
+
+    assert format_required_edge_label_failure(statement, ("main",)) == (
+        'missing requirement for edge $e with label "link" in rule main'
+    )
+
+
+def test_formats_required_node_attr_failure_with_actual_value():
+    statement = RequireNodeAttrStmt("n1", "kind", "root")
+
+    assert format_required_node_attr_failure(statement, "leaf", ("main",)) == (
+        'missing requirement for node "n1" with attr "kind" = "root"; '
+        'found "leaf" in rule main'
+    )
+
+
+def test_formats_required_edge_attr_failure_with_missing_value():
+    statement = RequireEdgeAttrStmt(VarRef("e"), "weight", 2)
+
+    assert format_required_edge_attr_failure(statement, None, ("main",)) == (
+        'missing requirement for edge $e with attr "weight" = 2; '
+        "found <missing> in rule main"
     )
