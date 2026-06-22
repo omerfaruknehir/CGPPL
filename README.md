@@ -16,7 +16,7 @@ Implemented pieces:
 - Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, negative graph requirements, multi-label graph predicates/construction, variable-bound construction IDs, rule-local construction precondition diagnostics, and opt-in endpoint auto-creation.
 - Parser/AST metadata for explicit endpoint construction policy on `add edge` source/target refs.
 - CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
-- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, variable-bound construction IDs, construction precondition diagnostics, endpoint construction parser metadata, and endpoint auto-create runtime behavior.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, variable-bound construction IDs, construction precondition diagnostics, endpoint construction parser metadata, endpoint auto-create runtime behavior, and endpoint auto-create CLI execution.
 
 ## Local development
 
@@ -142,4 +142,4 @@ rule main => try {
 
 ## Next implementation step
 
-Add CLI-level coverage for endpoint auto-creation and then start the next feature slice: structured diagnostics for failed graph predicates. The first code step should introduce a small error-formatting helper for matcher and requirement failures so future predicate features keep consistent rule/context messages.
+Start structured diagnostics for failed graph predicates. The first code step should introduce a shared error-formatting helper for matcher and requirement failures so future predicate features keep consistent rule/context messages.
