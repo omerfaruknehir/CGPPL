@@ -16,8 +16,8 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - variable-bound construction IDs with deterministic fresh-ID generation
 - rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
-- shared source-like diagnostic formatting helpers for graph refs, literals, constraints, and rule locations
-- direct runtime structured diagnostics for matcher, negative-requirement, and positive-requirement paths
+- shared source-like diagnostic formatting helpers for graph refs, literals, constraints, where expressions, and rule locations
+- direct runtime structured diagnostics for matcher, negative-requirement, positive-requirement, and unbound `where` variable paths
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -184,10 +184,21 @@ Implementation status:
 6. Done: positive require diagnostics are wired directly in `src/cgppl/runtime.py`.
 7. Done: the import-time adapter module was removed and package initialization no longer mutates runtime dispatch.
 
-## Next implementation slice: comparison predicate structured diagnostics
+## Completed feature slice: where variable diagnostics
 
-The next slice should extend structured diagnostics to `where` comparison evaluation errors. Matcher failures already include `where` predicates when no object satisfies them, but malformed or unsupported runtime comparison values still use older lower-level error wording.
+This slice routes unbound `where` variable failures through the runtime diagnostic helper layer.
+
+Implementation status:
+
+1. Done: added `format_unbound_where_variable_failure(...)` to `src/cgppl/runtime_diagnostics.py`.
+2. Done: `_eval_where_expr` now uses the helper for unbound `VarExpr` operands.
+3. Done: formatter and runtime regression tests cover the emitted message.
+4. Done: CI passed and the where-variable diagnostic slice was merged.
+
+## Next implementation slice: mutation target structured diagnostics
+
+The next slice should extend structured diagnostics to mutation targets that still use direct runtime strings.
 
 Next concrete code step:
 
-- Audit `src/cgppl/runtime.py` comparison helpers and add narrow formatter coverage for failed `where` comparisons that currently bypass `cgppl.runtime_diagnostics`.
+- Add runtime diagnostic helpers for missing mutation targets, starting with `delete node` and `delete edge`, then wire `DeleteNodeStmt` and `DeleteEdgeStmt` in `src/cgppl/runtime.py`.
