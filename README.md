@@ -13,9 +13,9 @@ Implemented pieces:
 - Recursive-descent parser for `program Name { ... }`, rule declarations, rule calls, `skip`, `fail`, sequential blocks, and `try { ... } or { ... }` fallback blocks.
 - Immutable graph IR with node/edge records, labels, attributes, endpoint validation, serialization, and immutable update/removal helpers.
 - Semantic validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
-- Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, negative graph requirements, and multi-label graph predicates/construction.
+- Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, negative graph requirements, multi-label graph predicates/construction, and variable-bound construction IDs.
 - CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
-- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, and multi-label predicates/construction.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, and variable-bound construction IDs.
 
 ## Local development
 
@@ -42,6 +42,7 @@ cgppl run examples/where-vars.cgppl --graph examples/tiny-graph.json --compact
 cgppl run examples/negative-require.cgppl --graph examples/tiny-graph.json --compact
 cgppl run examples/inline-construction-attrs.cgppl --graph examples/tiny-graph.json --compact
 cgppl run examples/multi-label.cgppl --graph examples/tiny-graph.json --compact
+cgppl run examples/variable-bound-construction-ids.cgppl --graph examples/tiny-graph.json --compact
 ```
 
 ## Implemented subset syntax
@@ -75,8 +76,10 @@ rule main => delete edge $e;
 rule main => add node "n3" label "Replacement";
 rule main => add node "n3" label "Generated" label "Replacement";
 rule main => add node "n3" label "Replacement" attr "kind" = "generated" attr "active" = true;
+rule main => add node $replacement label "Generated";
 rule main => add edge "e2" from $n to "n3" label "new";
 rule main => add edge "e2" from $n to "n3" label "new" label "owned" attr "weight" = 1;
+rule main => add edge $new_edge from $n to $replacement label "new";
 rule main => set node $n attr "kind" = "replacement";
 rule main => set edge $e attr "weight" = 1;
 rule main => set node $n label "Visited";
@@ -97,8 +100,8 @@ rule main => {
   require no edge $blocked from $n to $target label "blocked";
   unset node $n attr "kind";
   unset edge $e label "link";
-  add node "generated" label "Generated" label "Replacement" attr "kind" = "generated";
-  add edge "new-link" from $n to "generated" label "new" label "owned" attr "weight" = 1;
+  add node $generated label "Generated" label "Replacement" attr "kind" = "generated";
+  add edge $new_link from $n to $generated label "new" label "owned" attr "weight" = 1;
   match node $created label "Generated" label "Replacement";
   set node $created label "Reached";
 }
@@ -127,14 +130,10 @@ rule main => try {
 - Edge endpoint variables are bound before edge `where` predicates run, so `match edge $e from $a to $b where $a != $b;` works as expected.
 - Negative requirements are existential absence checks: `require no node $n label "Excluded";` succeeds only when no node matches the predicate. Variables introduced only inside a negative requirement are temporary and are not visible to later statements.
 - `add node` and `add edge` can construct labels and attributes in a single statement; duplicate inline attribute names and duplicate label clauses in the same predicate/constructor are rejected by the parser.
+- Construction targets may be literal IDs or `$variables`. Bound variables resolve to their existing binding. Unbound construction target variables generate deterministic fresh IDs from the variable name, then bind that variable for later statements; for example, `$replacement` tries `replacement`, then `replacement_2`, `replacement_3`, and so on.
 - `try-or` rolls back graph and variable changes from the failed branch before trying the fallback branch.
 - `unset` is idempotent for missing labels/attributes but still fails if the target node or edge does not exist.
 
 ## Next implementation step
 
-Implement variable-bound construction IDs so rules can construct nodes and edges from previously matched values instead of only string literal IDs. Target examples:
-
-```cgppl
-add node $replacement label "Generated";
-add edge $new_edge from $source to $replacement label "new";
-```
+Implement construction-time endpoint auto-creation or explicit constructor precondition diagnostics. The practical first step is to decide whether `add edge $e from $new_source to $new_target;` should auto-create missing endpoint nodes or continue to require explicit prior `add node`/`match node` statements with clearer errors.
