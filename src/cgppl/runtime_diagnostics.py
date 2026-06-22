@@ -16,12 +16,14 @@ from .ast import (
     RequireNodeAttrStmt,
     RequireNodeLabelStmt,
     RequireNodeStmt,
+    VarExpr,
 )
 from .diagnostics import (
     format_graph_predicate,
     format_graph_predicate_failure,
     format_literal,
     format_rule_location,
+    format_where_expr,
 )
 
 
@@ -161,6 +163,12 @@ def format_required_edge_attr_failure(
         actual,
         call_stack,
     )
+
+
+def format_unbound_where_variable_failure(expr: VarExpr, call_stack: tuple[str, ...]) -> str:
+    """Format an unbound variable used while evaluating a where predicate."""
+
+    return f"unbound where variable {format_where_expr(expr)} in rule {format_rule_location(call_stack)}"
 
 
 def _format_required_attr_failure(
