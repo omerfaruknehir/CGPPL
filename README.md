@@ -13,10 +13,10 @@ Implemented pieces:
 - Recursive-descent parser for `program Name { ... }`, rule declarations, rule calls, `skip`, `fail`, sequential blocks, and `try { ... } or { ... }` fallback blocks.
 - Immutable graph IR with node/edge records, labels, attributes, endpoint validation, serialization, and immutable update/removal helpers.
 - Semantic validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
-- Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, negative graph requirements, multi-label graph predicates/construction, variable-bound construction IDs, and rule-local construction precondition diagnostics.
+- Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, negative graph requirements, multi-label graph predicates/construction, variable-bound construction IDs, rule-local construction precondition diagnostics, and opt-in endpoint auto-creation.
 - Parser/AST metadata for explicit endpoint construction policy on `add edge` source/target refs.
 - CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
-- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, variable-bound construction IDs, construction precondition diagnostics, and endpoint construction parser metadata.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, variable-bound construction IDs, construction precondition diagnostics, endpoint construction parser metadata, and endpoint auto-create runtime behavior.
 
 ## Local development
 
@@ -44,6 +44,7 @@ cgppl run examples/negative-require.cgppl --graph examples/tiny-graph.json --com
 cgppl run examples/inline-construction-attrs.cgppl --graph examples/tiny-graph.json --compact
 cgppl run examples/multi-label.cgppl --graph examples/tiny-graph.json --compact
 cgppl run examples/variable-bound-construction-ids.cgppl --graph examples/tiny-graph.json --compact
+cgppl run examples/endpoint-auto-create.cgppl --graph examples/tiny-graph.json --compact
 ```
 
 ## Implemented subset syntax
@@ -133,18 +134,12 @@ rule main => try {
 - Negative requirements are existential absence checks: `require no node $n label "Excluded";` succeeds only when no node matches the predicate. Variables introduced only inside a negative requirement are temporary and are not visible to later statements.
 - `add node` and `add edge` can construct labels and attributes in a single statement; duplicate inline attribute names and duplicate label clauses in the same predicate/constructor are rejected by the parser.
 - Construction targets may be literal IDs or `$variables`. Bound variables resolve to their existing binding. Unbound construction target variables generate deterministic fresh IDs from the variable name, then bind that variable for later statements; for example, `$replacement` tries `replacement`, then `replacement_2`, `replacement_3`, and so on.
-- Construction duplicate-ID and missing-endpoint failures are reported as rule-local failures, so they include rule context and can be handled by `try-or` fallback branches.
+- Construction duplicate-ID and strict missing-endpoint failures are reported as rule-local failures, so they include rule context and can be handled by `try-or` fallback branches.
 - Plain `add edge` keeps explicit endpoint preconditions: source and target nodes must already exist.
-- The reserved opt-in endpoint syntax `from add ...` / `to add ...` now parses and records endpoint policy metadata, but runtime endpoint auto-creation is not implemented yet.
+- Opt-in endpoint syntax `from add ...` / `to add ...` creates or ensures endpoint nodes before adding the edge. Auto-created endpoint nodes start with no labels or attributes. Unmarked endpoints remain strict.
 - `try-or` rolls back graph and variable changes from the failed branch before trying the fallback branch.
 - `unset` is idempotent for missing labels/attributes but still fails if the target node or edge does not exist.
 
 ## Next implementation step
 
-Implement runtime semantics for endpoint auto-creation metadata:
-
-```cgppl
-add edge $new_edge from add $source to add $target label "new";
-```
-
-The runtime should create or ensure endpoint nodes before adding the edge, bind unbound endpoint variables, and keep strict precondition behavior for endpoints without `add`.
+Add CLI-level coverage for endpoint auto-creation and then start the next feature slice: structured diagnostics for failed graph predicates. The first code step should introduce a small error-formatting helper for matcher and requirement failures so future predicate features keep consistent rule/context messages.
