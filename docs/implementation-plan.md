@@ -17,7 +17,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - shared source-like diagnostic formatting helpers for graph refs, literals, constraints, and rule locations
-- runtime-specific structured diagnostics for matcher, negative-requirement, and positive-requirement paths
+- direct runtime structured diagnostics for matcher, negative-requirement, and positive-requirement paths
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -181,12 +181,13 @@ Implementation status:
 3. Done: runtime regression tests verify the target messages for positive require failures.
 4. Done: CLI/runtime/backtracking expectations were updated from old direct strings to structured diagnostics.
 5. Done: CI passed and the positive-require diagnostics slice was merged.
-6. Follow-up: positive require runtime behavior currently routes through a narrow import-time adapter layer. It should be folded directly into `src/cgppl/runtime.py` and the patch module removed.
+6. Done: positive require diagnostics are wired directly in `src/cgppl/runtime.py`.
+7. Done: the import-time adapter module was removed and package initialization no longer mutates runtime dispatch.
 
-## In-progress cleanup slice: direct runtime diagnostic wiring
+## Next implementation slice: comparison predicate structured diagnostics
 
-The next slice removes the positive-require adapter patch and puts all positive-require failure formatting directly in `src/cgppl/runtime.py`.
+The next slice should extend structured diagnostics to `where` comparison evaluation errors. Matcher failures already include `where` predicates when no object satisfies them, but malformed or unsupported runtime comparison values still use older lower-level error wording.
 
 Next concrete code step:
 
-- Update `src/cgppl/runtime.py` to import and call `format_required_node_failure`, `format_required_edge_failure`, `format_required_node_label_failure`, `format_required_edge_label_failure`, `format_required_node_attr_failure`, and `format_required_edge_attr_failure` directly; then remove `src/cgppl/runtime_positive_require_patch.py` and the import-time installer from `src/cgppl/__init__.py`.
+- Audit `src/cgppl/runtime.py` comparison helpers and add narrow formatter coverage for failed `where` comparisons that currently bypass `cgppl.runtime_diagnostics`.
