@@ -59,6 +59,7 @@ from .runtime_diagnostics import (
     format_required_node_attr_failure,
     format_required_node_failure,
     format_required_node_label_failure,
+    format_unbound_where_variable_failure,
 )
 from .semantics import validate_program
 
@@ -335,7 +336,7 @@ def _execute_sequence(
 
     if last_error is not None:
         raise last_error
-    raise RuntimeFailure("statement produced no candidate states")
+    raise RuntimeFailure("statement produced no candidate state")
 
 
 def _statement_candidate_states(
@@ -589,7 +590,7 @@ def _eval_where_expr(
     if isinstance(expr, VarExpr):
         value = bindings.get(expr.name)
         if value is None:
-            raise GraphMatchFailed(f"unbound where variable {expr.display()} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_unbound_where_variable_failure(expr, call_stack))
         return value
     raise RuntimeFailure(f"unsupported where expression: {expr!r}")
 

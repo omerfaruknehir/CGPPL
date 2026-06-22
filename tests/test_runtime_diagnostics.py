@@ -28,6 +28,7 @@ from cgppl.runtime_diagnostics import (
     format_required_node_attr_failure,
     format_required_node_failure,
     format_required_node_label_failure,
+    format_unbound_where_variable_failure,
 )
 
 
@@ -135,4 +136,10 @@ def test_formats_required_edge_attr_failure_with_missing_value():
     assert format_required_edge_attr_failure(statement, None, ("main",)) == (
         'missing requirement for edge $e with attr "weight" = 2; '
         "found <missing> in rule main"
+    )
+
+
+def test_formats_unbound_where_variable_failure():
+    assert format_unbound_where_variable_failure(VarExpr("missing"), ("main", "helper")) == (
+        "unbound where variable $missing in rule main -> helper"
     )

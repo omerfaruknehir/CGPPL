@@ -69,5 +69,7 @@ def test_where_predicate_rejects_unbound_variable_operand():
     program = parse_program('program Demo { rule main => match node $n where id == $missing; }')
     graph = Graph.empty().add_node(Node("a"))
 
-    with pytest.raises(GraphMatchFailed, match="unbound where variable \\$missing"):
+    with pytest.raises(GraphMatchFailed) as excinfo:
         execute_program(program, graph)
+
+    assert str(excinfo.value) == "unbound where variable $missing in rule main"
