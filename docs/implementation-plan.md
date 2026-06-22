@@ -126,8 +126,9 @@ Implementation status:
 6. Done: parser records `from add ...` and `to add ...` as endpoint auto-create metadata.
 7. Done: runtime endpoint auto-creation creates or ensures endpoint nodes before constructing the edge.
 8. Done: runtime tests cover opt-in source creation, target creation, mixed strict/auto-create policy, existing literal endpoints, variable binding, and strict precondition preservation.
-9. Done: executable example and README syntax/status updates were added.
+9. Done: CLI execution tests cover endpoint auto-creation through the command-line entry point.
+10. Done: executable example and README syntax/status updates were added.
 
 Next concrete code step:
 
-- Add CLI-level coverage for `examples/endpoint-auto-create.cgppl`, then start structured diagnostics for failed graph predicates by introducing a shared error-formatting helper for matcher and requirement failures.
+- Start structured diagnostics for failed graph predicates by introducing a shared error-formatting helper for matcher and requirement failures.
