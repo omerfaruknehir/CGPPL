@@ -195,10 +195,24 @@ Implementation status:
 3. Done: formatter and runtime regression tests cover the emitted message.
 4. Done: CI passed and the where-variable diagnostic slice was merged.
 
-## Next implementation slice: mutation target structured diagnostics
+## In-progress feature slice: mutation target structured diagnostics
 
-The next slice should extend structured diagnostics to mutation targets that still use direct runtime strings.
+This slice extends structured diagnostics to mutation target lookups that still use direct runtime strings.
+
+Target diagnostic shape:
+
+```text
+missing delete target for node "missing" in rule main
+missing delete target for edge $e in rule main -> helper
+```
+
+Implementation status:
+
+1. Done: added `format_missing_delete_node_target_failure(...)` and `format_missing_delete_edge_target_failure(...)` to the runtime diagnostic helper layer.
+2. Done: unit tests cover the new delete-target diagnostic helpers.
+3. Done: added xfail runtime regression tests for literal and bound delete-node/delete-edge target failures.
+4. Pending: wire `DeleteNodeStmt` and `DeleteEdgeStmt` in `src/cgppl/runtime.py` to the new helpers.
 
 Next concrete code step:
 
-- Add runtime diagnostic helpers for missing mutation targets, starting with `delete node` and `delete edge`, then wire `DeleteNodeStmt` and `DeleteEdgeStmt` in `src/cgppl/runtime.py`.
+- Import the delete-target helpers in `src/cgppl/runtime.py`, replace the direct `delete node target not found` and `delete edge target not found` strings, then remove the xfail markers from `tests/test_runtime_structured_delete_diagnostics.py`.

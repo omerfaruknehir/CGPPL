@@ -1,6 +1,8 @@
 from cgppl.ast import (
     AttrExpr,
     AttrPredicate,
+    DeleteEdgeStmt,
+    DeleteNodeStmt,
     FieldExpr,
     LiteralExpr,
     MatchEdgeStmt,
@@ -22,6 +24,8 @@ from cgppl.runtime_diagnostics import (
     format_forbidden_node_failure,
     format_match_edge_failure,
     format_match_node_failure,
+    format_missing_delete_edge_target_failure,
+    format_missing_delete_node_target_failure,
     format_required_edge_attr_failure,
     format_required_edge_failure,
     format_required_edge_label_failure,
@@ -136,6 +140,22 @@ def test_formats_required_edge_attr_failure_with_missing_value():
     assert format_required_edge_attr_failure(statement, None, ("main",)) == (
         'missing requirement for edge $e with attr "weight" = 2; '
         "found <missing> in rule main"
+    )
+
+
+def test_formats_missing_delete_node_target_failure():
+    statement = DeleteNodeStmt("missing")
+
+    assert format_missing_delete_node_target_failure(statement, ("main",)) == (
+        'missing delete target for node "missing" in rule main'
+    )
+
+
+def test_formats_missing_delete_edge_target_failure():
+    statement = DeleteEdgeStmt(VarRef("e"))
+
+    assert format_missing_delete_edge_target_failure(statement, ("main", "helper")) == (
+        "missing delete target for edge $e in rule main -> helper"
     )
 
 
