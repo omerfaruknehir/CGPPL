@@ -48,6 +48,12 @@ from .ast import (
     WherePredicate,
 )
 from .graph import Edge, Graph, GraphError, Node
+from .runtime_diagnostics import (
+    format_forbidden_edge_failure,
+    format_forbidden_node_failure,
+    format_match_edge_failure,
+    format_match_node_failure,
+)
 from .semantics import validate_program
 
 
@@ -144,17 +150,11 @@ def _execute_statement(
         raise RuleFailed(f"rule failed: {_location(call_stack)}")
     if isinstance(statement, RequireNoNodeStmt):
         if _forbidden_node_exists(statement, state, call_stack):
-            raise GraphMatchFailed(
-                f"forbidden node matched {_format_graph_ref(statement.node_id)} "
-                f"in rule {_location(call_stack)}"
-            )
+            raise GraphMatchFailed(format_forbidden_node_failure(statement, call_stack))
         return state
     if isinstance(statement, RequireNoEdgeStmt):
         if _forbidden_edge_exists(statement, state, call_stack):
-            raise GraphMatchFailed(
-                f"forbidden edge matched {_format_graph_ref(statement.edge_id)} "
-                f"in rule {_location(call_stack)}"
-            )
+            raise GraphMatchFailed(format_forbidden_edge_failure(statement, call_stack))
         return state
     if isinstance(statement, RequireNodeStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
@@ -400,10 +400,7 @@ def _iter_match_node_states(
         if graph.has_node(existing) and _node_matches(graph.get_node(existing), statement, state, call_stack):
             yield state
             return
-        raise GraphMatchFailed(
-            f"matched node variable {statement.node_id.display()} no longer satisfies matcher "
-            f"in rule {_location(call_stack)}"
-        )
+        raise GraphMatchFailed(format_match_node_failure(statement, call_stack))
 
     matched = False
     for node in graph.nodes:
@@ -414,7 +411,7 @@ def _iter_match_node_states(
                 yield candidate
 
     if not matched:
-        raise GraphMatchFailed(f"no node matched {statement.node_id.display()} in rule {_location(call_stack)}")
+        raise GraphMatchFailed(format_match_node_failure(statement, call_stack))
 
 
 def _execute_match_edge(
@@ -440,10 +437,7 @@ def _iter_match_edge_states(
             if candidate.matched:
                 yield candidate.state
                 return
-        raise GraphMatchFailed(
-            f"matched edge variable {statement.edge_id.display()} no longer satisfies matcher "
-            f"in rule {_location(call_stack)}"
-        )
+        raise GraphMatchFailed(format_match_edge_failure(statement, call_stack))
 
     matched = False
     for edge in state.graph.edges:
@@ -454,7 +448,7 @@ def _iter_match_edge_states(
             yield candidate.state
 
     if not matched:
-        raise GraphMatchFailed(f"no edge matched {statement.edge_id.display()} in rule {_location(call_stack)}")
+        raise GraphMatchFailed(format_match_edge_failure(statement, call_stack))
 
 
 def _forbidden_node_exists(
@@ -718,12 +712,6 @@ def _format_value(value: ComparableValue) -> str:
     if value is None:
         return "<missing>"
     return repr(value)
-
-
-def _format_graph_ref(ref: GraphRef) -> str:
-    if isinstance(ref, VarRef):
-        return ref.display()
-    return repr(ref)
 
 
 def _location(call_stack: tuple[str, ...]) -> str:
