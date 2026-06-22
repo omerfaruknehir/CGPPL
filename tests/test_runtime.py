@@ -1,6 +1,6 @@
 import pytest
 
-from cgppl.graph import Edge, Graph, GraphError, Node
+from cgppl.graph import Edge, Graph, Node
 from cgppl.parser import parse_program
 from cgppl.runtime import (
     GraphMatchFailed,
@@ -207,7 +207,7 @@ def test_add_edge_statement_rejects_missing_endpoint():
     program = parse_program('program Demo { rule main => add edge "e1" from "a" to "missing"; }')
     graph = Graph.empty().add_node(Node("a"))
 
-    with pytest.raises(GraphError, match="missing target node: missing"):
+    with pytest.raises(GraphMatchFailed, match="add edge failed: edge e1 references missing target node: missing"):
         execute_program(program, graph)
 
 
