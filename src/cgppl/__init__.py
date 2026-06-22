@@ -26,7 +26,4 @@ from .runtime import (
     apply_rule,
     execute_program,
 )
-from .runtime_positive_require_patch import install_positive_require_diagnostics
 from .semantics import Diagnostic, SemanticError, validate_program
-
-install_positive_require_diagnostics()
