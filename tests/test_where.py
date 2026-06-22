@@ -109,7 +109,10 @@ def test_match_node_where_comparisons_are_type_sensitive():
     program = parse_program('program Demo { rule main => match node $n where attr("score") >= 10; }')
     graph = Graph.empty().add_node(Node("n1", attrs={"score": "10"}))
 
-    with pytest.raises(RuleFailed, match="no node matched"):
+    with pytest.raises(
+        RuleFailed,
+        match=r'no match for node \$n with where attr "score" >= 10 in rule main',
+    ):
         execute_program(program, graph)
 
 
