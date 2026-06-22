@@ -112,7 +112,7 @@ def test_negative_node_requirement_with_multiple_labels_only_fails_when_all_labe
     assert execute_program(passing, graph).graph is graph
 
     failing_graph = Graph(nodes=(Node("bad", labels=("Generated", "Blocked")),))
-    with pytest.raises(GraphMatchFailed, match="forbidden node matched"):
+    with pytest.raises(GraphMatchFailed, match="forbidden match for node"):
         execute_program(passing, failing_graph)
 
 

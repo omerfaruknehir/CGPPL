@@ -1,11 +1,8 @@
-import pytest
-
 from cgppl.graph import Edge, Graph, Node
 from cgppl.parser import parse_program
 from cgppl.runtime import GraphMatchFailed, execute_program
 
 
-@pytest.mark.xfail(reason="runtime predicate failures are not wired to structured diagnostics yet")
 def test_match_node_runtime_failure_reports_structured_predicate_context():
     program = parse_program(
         'program Demo { rule main => match node $n label "Root" label "Selected" '
@@ -21,16 +18,17 @@ def test_match_node_runtime_failure_reports_structured_predicate_context():
         )
     )
 
-    with pytest.raises(GraphMatchFailed) as error:
+    try:
         execute_program(program, graph)
+    except GraphMatchFailed as error:
+        assert str(error) == (
+            'no match for node $n with label "Root", label "Selected", '
+            'attr "kind" = "root", where attr "rank" >= 2 in rule main'
+        )
+    else:
+        raise AssertionError("expected GraphMatchFailed")
 
-    assert str(error.value) == (
-        'no match for node $n with label "Root", label "Selected", '
-        'attr "kind" = "root", where attr "rank" >= 2 in rule main'
-    )
 
-
-@pytest.mark.xfail(reason="runtime predicate failures are not wired to structured diagnostics yet")
 def test_match_edge_runtime_failure_reports_structured_predicate_context():
     program = parse_program(
         'program Demo { rule main => match edge $e from "a" to "b" '
@@ -41,16 +39,17 @@ def test_match_edge_runtime_failure_reports_structured_predicate_context():
         edges=(Edge("e1", "a", "b", labels=("link",), attrs=(("weight", 1),)),),
     )
 
-    with pytest.raises(GraphMatchFailed) as error:
+    try:
         execute_program(program, graph)
+    except GraphMatchFailed as error:
+        assert str(error) == (
+            'no match for edge $e with label "link", '
+            'where attr "weight" >= 2 in rule main'
+        )
+    else:
+        raise AssertionError("expected GraphMatchFailed")
 
-    assert str(error.value) == (
-        'no match for edge $e with label "link", '
-        'where attr "weight" >= 2 in rule main'
-    )
 
-
-@pytest.mark.xfail(reason="runtime predicate failures are not wired to structured diagnostics yet")
 def test_negative_node_runtime_failure_reports_structured_predicate_context():
     program = parse_program(
         'program Demo { rule main => require no node $blocked '
@@ -58,16 +57,17 @@ def test_negative_node_runtime_failure_reports_structured_predicate_context():
     )
     graph = Graph(nodes=(Node("bad", labels=("Blocked",), attrs=(("active", True),)),))
 
-    with pytest.raises(GraphMatchFailed) as error:
+    try:
         execute_program(program, graph)
+    except GraphMatchFailed as error:
+        assert str(error) == (
+            'forbidden match for node $blocked with label "Blocked", '
+            'attr "active" = true in rule main'
+        )
+    else:
+        raise AssertionError("expected GraphMatchFailed")
 
-    assert str(error.value) == (
-        'forbidden match for node $blocked with label "Blocked", '
-        'attr "active" = true in rule main'
-    )
 
-
-@pytest.mark.xfail(reason="runtime predicate failures are not wired to structured diagnostics yet")
 def test_negative_edge_runtime_failure_reports_structured_predicate_context():
     program = parse_program(
         'program Demo { rule main => { match node $target label "Target"; '
@@ -79,10 +79,12 @@ def test_negative_edge_runtime_failure_reports_structured_predicate_context():
         edges=(Edge("e1", "a", "b", labels=("blocked",)),),
     )
 
-    with pytest.raises(GraphMatchFailed) as error:
+    try:
         execute_program(program, graph)
-
-    assert str(error.value) == (
-        'forbidden match for edge $blocked with label "blocked", '
-        'where field target == $target in rule main'
-    )
+    except GraphMatchFailed as error:
+        assert str(error) == (
+            'forbidden match for edge $blocked with label "blocked", '
+            'where field target == $target in rule main'
+        )
+    else:
+        raise AssertionError("expected GraphMatchFailed")
