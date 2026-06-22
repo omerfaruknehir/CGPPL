@@ -1,7 +1,7 @@
 import pytest
 
-from cgppl.ast import AddEdgeStmt, AddNodeStmt, BlockStmt, SetNodeLabelStmt, VarRef
-from cgppl.graph import Edge, Graph, GraphError, Node
+from cgppl.ast import AddEdgeStmt, AddNodeStmt, BlockStmt, VarRef
+from cgppl.graph import Edge, Graph, Node
 from cgppl.parser import parse_program
 from cgppl.runtime import GraphMatchFailed, execute_program
 
@@ -102,7 +102,7 @@ def test_bound_node_construction_variable_resolves_to_existing_binding_and_rejec
     )
     graph = Graph(nodes=(Node("root", labels=("Root",)),))
 
-    with pytest.raises(GraphError, match="duplicate node id: root"):
+    with pytest.raises(GraphMatchFailed, match="add node failed: duplicate node id: root in rule main"):
         execute_program(program, graph)
 
 
@@ -129,3 +129,33 @@ def test_literal_construction_targets_remain_compatible():
 
     assert result.graph.has_node("literal")
     assert result.graph.has_edge("literal-edge")
+
+
+def test_missing_edge_endpoint_reports_rule_failure_with_context():
+    program = parse_program(
+        'program Demo { rule main => add edge "new" from "missing" to "target" label "new"; }'
+    )
+    graph = Graph(nodes=(Node("target"),))
+
+    with pytest.raises(
+        GraphMatchFailed,
+        match="add edge failed: edge new references missing source node: missing in rule main",
+    ):
+        execute_program(program, graph)
+
+
+def test_constructor_precondition_failure_can_fall_back_in_try_or():
+    program = parse_program(
+        'program Demo { rule main => try { '
+        'add node "existing" label "Duplicate"; '
+        '} or { '
+        'add node "fallback" label "Recovered"; '
+        '} }'
+    )
+    graph = Graph(nodes=(Node("existing", labels=("Original",)),))
+
+    result = execute_program(program, graph)
+
+    assert result.graph.node_ids == ("existing", "fallback")
+    assert result.graph.get_node("existing").labels == ("Original",)
+    assert result.graph.get_node("fallback").labels == ("Recovered",)

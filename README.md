@@ -13,9 +13,9 @@ Implemented pieces:
 - Recursive-descent parser for `program Name { ... }`, rule declarations, rule calls, `skip`, `fail`, sequential blocks, and `try { ... } or { ... }` fallback blocks.
 - Immutable graph IR with node/edge records, labels, attributes, endpoint validation, serialization, and immutable update/removal helpers.
 - Semantic validation for duplicate rules, undefined calls, nested calls inside blocks and try-or branches, and configurable entry rule checks.
-- Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, negative graph requirements, multi-label graph predicates/construction, and variable-bound construction IDs.
+- Runtime support for graph inspection, graph mutation, graph construction, inline construction labels/attributes, attributes, labels, variable binding, deterministic match order, block-local match backtracking, try-or rollback, annotation removal, first-class `where` predicates with variable operands, negative graph requirements, multi-label graph predicates/construction, variable-bound construction IDs, and rule-local construction precondition diagnostics.
 - CLI commands: `cgppl lex`, `cgppl parse`, `cgppl validate`, and `cgppl run`.
-- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, and variable-bound construction IDs.
+- Pytest coverage for lexer, parser, semantic validation, graph IR behavior, runtime behavior, CLI graph execution, match backtracking, fallback execution, annotation removal, inline construction attributes, constructed object lifecycle, `where` predicate filtering, `where` variable operands, negative graph requirements, multi-label predicates/construction, variable-bound construction IDs, and construction precondition diagnostics.
 
 ## Local development
 
@@ -131,9 +131,10 @@ rule main => try {
 - Negative requirements are existential absence checks: `require no node $n label "Excluded";` succeeds only when no node matches the predicate. Variables introduced only inside a negative requirement are temporary and are not visible to later statements.
 - `add node` and `add edge` can construct labels and attributes in a single statement; duplicate inline attribute names and duplicate label clauses in the same predicate/constructor are rejected by the parser.
 - Construction targets may be literal IDs or `$variables`. Bound variables resolve to their existing binding. Unbound construction target variables generate deterministic fresh IDs from the variable name, then bind that variable for later statements; for example, `$replacement` tries `replacement`, then `replacement_2`, `replacement_3`, and so on.
+- Construction duplicate-ID and missing-endpoint failures are reported as rule-local failures, so they include rule context and can be handled by `try-or` fallback branches.
 - `try-or` rolls back graph and variable changes from the failed branch before trying the fallback branch.
 - `unset` is idempotent for missing labels/attributes but still fails if the target node or edge does not exist.
 
 ## Next implementation step
 
-Implement construction-time endpoint auto-creation or explicit constructor precondition diagnostics. The practical first step is to decide whether `add edge $e from $new_source to $new_target;` should auto-create missing endpoint nodes or continue to require explicit prior `add node`/`match node` statements with clearer errors.
+Decide whether edge construction should keep explicit endpoint preconditions or grow an opt-in auto-create endpoint form. The practical next code step is to add a syntax design note and tests for the chosen behavior before changing constructor semantics.

@@ -46,7 +46,7 @@ from .ast import (
     WhereExpr,
     WherePredicate,
 )
-from .graph import Edge, Graph, Node
+from .graph import Edge, Graph, GraphError, Node
 from .semantics import validate_program
 
 
@@ -224,19 +224,25 @@ def _execute_statement(
     if isinstance(statement, AddNodeStmt):
         node_id, current = _resolve_construction_ref(statement.node_id, state, "node", call_stack)
         attrs = _attrs_from_predicates(statement.attrs)
-        return _ExecutionState(
-            current.graph.add_node(Node(node_id, labels=statement.labels, attrs=attrs)),
-            current.bindings,
-        )
+        try:
+            return _ExecutionState(
+                current.graph.add_node(Node(node_id, labels=statement.labels, attrs=attrs)),
+                current.bindings,
+            )
+        except GraphError as error:
+            raise GraphMatchFailed(f"add node failed: {error} in rule {_location(call_stack)}") from error
     if isinstance(statement, AddEdgeStmt):
         edge_id, current = _resolve_construction_ref(statement.edge_id, state, "edge", call_stack)
         source_id = _resolve_ref(statement.source_id, current.bindings, "edge source", call_stack)
         target_id = _resolve_ref(statement.target_id, current.bindings, "edge target", call_stack)
         attrs = _attrs_from_predicates(statement.attrs)
-        return _ExecutionState(
-            current.graph.add_edge(Edge(edge_id, source_id, target_id, labels=statement.labels, attrs=attrs)),
-            current.bindings,
-        )
+        try:
+            return _ExecutionState(
+                current.graph.add_edge(Edge(edge_id, source_id, target_id, labels=statement.labels, attrs=attrs)),
+                current.bindings,
+            )
+        except GraphError as error:
+            raise GraphMatchFailed(f"add edge failed: {error} in rule {_location(call_stack)}") from error
     if isinstance(statement, SetNodeAttrStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if not graph.has_node(node_id):

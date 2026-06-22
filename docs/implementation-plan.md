@@ -14,6 +14,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - node and edge construction with inline labels and inline attributes
 - multi-label matcher, negative-requirement, and construction clauses
 - variable-bound construction IDs with deterministic fresh-ID generation
+- rule-local construction precondition diagnostics for duplicate IDs and missing edge endpoints
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -72,17 +73,40 @@ Implementation status:
 5. Done: tests cover literal construction compatibility, generated IDs, collision suffixing, duplicate bound IDs, edge target construction, and unbound source errors.
 6. Done: executable example and README syntax/status updates were added.
 
-## Next feature slice: constructor precondition diagnostics
+## Completed feature slice: constructor precondition diagnostics
 
-The next useful slice is improving construction-time failure diagnostics before adding broader construction semantics.
+This slice converts graph-IR construction failures into rule-local failures. Construction duplicate-ID and missing-endpoint failures now include rule context and participate in `try-or` fallback behavior.
 
-Candidate questions:
+Example:
 
-- Should `add edge $e from $new_source to $new_target;` auto-create missing endpoint nodes, or should CGPPL require explicit prior `add node`/`match node` statements?
-- Should duplicate node/edge construction IDs remain `GraphError`s from the graph IR, or should the runtime wrap them in rule-local `GraphMatchFailed` diagnostics?
+```cgppl
+rule main => try {
+  add node "existing" label "Duplicate";
+} or {
+  add node "fallback" label "Recovered";
+}
+```
+
+Implementation status:
+
+1. Done: runtime wraps `GraphError` raised by node/edge construction as `GraphMatchFailed` with rule context.
+2. Done: duplicate node construction now fails as a rule failure instead of escaping as a graph-IR exception.
+3. Done: missing edge endpoint construction reports `add edge failed: ... in rule ...`.
+4. Done: tests cover duplicate-ID diagnostics, missing-endpoint diagnostics, and `try-or` fallback after construction precondition failure.
+5. Done: README status and notes were updated.
+
+## Next feature slice: endpoint construction policy
+
+The next useful slice is deciding whether edge construction should keep explicit endpoint preconditions or grow an opt-in auto-create endpoint form.
+
+Candidate syntax if auto-create is added:
+
+```cgppl
+add edge $e from add $source to add $target label "new";
+```
 
 Practical first step:
 
-1. Add tests that document current duplicate-ID and missing-endpoint failures.
-2. Decide whether to preserve those as graph-IR errors or convert them into runtime rule failures with source rule context.
-3. If preserving explicit endpoints, implement clearer runtime errors for missing edge endpoints in construction.
+1. Add a design note comparing explicit endpoints versus opt-in auto-create endpoints.
+2. Choose the smaller semantics-preserving form.
+3. Add parser tests for the chosen syntax before changing runtime behavior.
