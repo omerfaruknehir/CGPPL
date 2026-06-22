@@ -89,7 +89,7 @@ def test_runtime_unsets_node_and_edge_annotations():
 def test_runtime_unset_fails_when_target_is_missing():
     program = parse_program('program Demo { rule main => unset node "missing" attr "kind"; }')
 
-    with pytest.raises(GraphMatchFailed, match="unset node target not found: missing"):
+    with pytest.raises(GraphMatchFailed, match='missing unset target for node "missing" with attr "kind" in rule main'):
         execute_program(program, Graph.empty())
 
 
