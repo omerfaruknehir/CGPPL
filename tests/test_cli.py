@@ -267,7 +267,7 @@ def test_run_command_reports_failed_graph_requirement(tmp_path, capsys):
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "cgppl: runtime error:" in captured.out
-    assert "required node not found: missing" in captured.out
+    assert 'missing requirement for node "missing" in rule main' in captured.out
 
 
 def test_run_command_reports_failed_graph_attribute_requirement(tmp_path, capsys):
@@ -285,7 +285,7 @@ def test_run_command_reports_failed_graph_attribute_requirement(tmp_path, capsys
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "cgppl: runtime error:" in captured.out
-    assert "required node attribute mismatch" in captured.out
+    assert 'missing requirement for node "n1" with attr "kind" = "root"; found "leaf" in rule main' in captured.out
 
 
 def test_run_command_reports_failed_graph_label_requirement(tmp_path, capsys):
@@ -303,7 +303,7 @@ def test_run_command_reports_failed_graph_label_requirement(tmp_path, capsys):
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "cgppl: runtime error:" in captured.out
-    assert "required node label missing" in captured.out
+    assert 'missing requirement for node "n1" with label "Root" in rule main' in captured.out
 
 
 def test_run_command_reports_invalid_graph(tmp_path, capsys):
