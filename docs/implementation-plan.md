@@ -13,10 +13,11 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - node and edge matching with labels, attributes, endpoint constraints, and `where` predicates
 - node and edge construction with inline labels and inline attributes
 - multi-label matcher, negative-requirement, and construction clauses
+- variable-bound construction IDs with deterministic fresh-ID generation
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
-## Current feature slice: multi-label predicates and construction
+## Completed feature slice: multi-label predicates and construction
 
 Target syntax:
 
@@ -40,9 +41,9 @@ Implementation status:
 5. Done: tests cover positive multi-label node matching, edge matching, negative requirements, construction, and duplicate same-label rejection.
 6. Done: executable example and README syntax/status updates were added.
 
-## Next feature slice: variable-bound construction IDs
+## Completed feature slice: variable-bound construction IDs
 
-The next likely high-value slice is allowing construction targets to come from variables. This would let rewrite rules derive new graph objects from earlier matches without hard-coded literal IDs.
+This slice allows construction targets to come from variables. Rules can now derive new graph objects from earlier matches without hard-coded literal IDs.
 
 Target syntax:
 
@@ -54,11 +55,34 @@ rule main => {
 }
 ```
 
-Concrete implementation steps:
+Semantics:
 
-1. Decide whether unbound construction variables generate IDs or whether construction variables must already be bound.
-2. Extend `AddNodeStmt.node_id` and `AddEdgeStmt.edge_id` from `str` to `GraphRef` if construction should accept bound variables.
-3. Update parser `add node` and `add edge` targets to parse graph refs instead of graph IDs.
-4. Update runtime construction to resolve variable targets before adding nodes/edges.
-5. Add parser/runtime tests for literal construction compatibility, bound-variable construction, duplicate ID errors, and unbound-variable errors.
-6. Add an executable example and update README implemented syntax.
+- Literal construction IDs keep the existing behavior.
+- Bound construction variables resolve to their existing binding.
+- Unbound construction variables generate deterministic fresh IDs from the variable name, then bind the variable for later statements. For example, `$replacement` first tries `replacement`; if that ID already exists, it tries `replacement_2`, `replacement_3`, and so on.
+- Node construction variables avoid existing node IDs. Edge construction variables avoid existing edge IDs.
+- Edge source/target variables are still normal graph references: they must already be bound by a prior match or construction statement.
+
+Implementation status:
+
+1. Done: decided unbound construction variables generate deterministic fresh IDs rather than requiring prior bindings.
+2. Done: `AddNodeStmt.node_id` and `AddEdgeStmt.edge_id` were widened from `str` to `GraphRef`.
+3. Done: parser `add node` and `add edge` targets now parse graph refs instead of graph IDs.
+4. Done: runtime construction resolves bound variables, generates deterministic fresh IDs for unbound construction target variables, and binds generated variables.
+5. Done: tests cover literal construction compatibility, generated IDs, collision suffixing, duplicate bound IDs, edge target construction, and unbound source errors.
+6. Done: executable example and README syntax/status updates were added.
+
+## Next feature slice: constructor precondition diagnostics
+
+The next useful slice is improving construction-time failure diagnostics before adding broader construction semantics.
+
+Candidate questions:
+
+- Should `add edge $e from $new_source to $new_target;` auto-create missing endpoint nodes, or should CGPPL require explicit prior `add node`/`match node` statements?
+- Should duplicate node/edge construction IDs remain `GraphError`s from the graph IR, or should the runtime wrap them in rule-local `GraphMatchFailed` diagnostics?
+
+Practical first step:
+
+1. Add tests that document current duplicate-ID and missing-endpoint failures.
+2. Decide whether to preserve those as graph-IR errors or convert them into runtime rule failures with source rule context.
+3. If preserving explicit endpoints, implement clearer runtime errors for missing edge endpoints in construction.

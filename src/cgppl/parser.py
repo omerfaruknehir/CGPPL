@@ -315,11 +315,11 @@ class Parser:
 
     def _parse_add_statement(self) -> object:
         if self._match_keyword("node"):
-            node_id = self._parse_graph_id()
+            node_id = self._parse_graph_ref()
             labels, attrs = self._parse_constructor_annotations("node constructor")
             return AddNodeStmt(node_id, labels=labels, attrs=attrs)
         if self._match_keyword("edge"):
-            edge_id = self._parse_graph_id()
+            edge_id = self._parse_graph_ref()
             self._expect_keyword("from")
             source_id = self._parse_graph_ref()
             self._expect_keyword("to")

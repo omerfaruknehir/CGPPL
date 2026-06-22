@@ -1,0 +1,9 @@
+program VariableBoundConstructionIds {
+  rule main => {
+    match node $source label "Root";
+    add node $replacement label "Generated" attr "kind" = "replacement";
+    add edge $new_edge from $source to $replacement label "new" label "owned";
+    set node $replacement label "Selected";
+    set edge $new_edge attr "weight" = 1;
+  }
+}

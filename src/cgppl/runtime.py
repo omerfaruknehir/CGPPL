@@ -222,18 +222,20 @@ def _execute_statement(
             return _ExecutionState(graph.remove_edge(edge_id), state.bindings)
         raise GraphMatchFailed(f"delete edge target not found: {edge_id} in rule {_location(call_stack)}")
     if isinstance(statement, AddNodeStmt):
+        node_id, current = _resolve_construction_ref(statement.node_id, state, "node", call_stack)
         attrs = _attrs_from_predicates(statement.attrs)
         return _ExecutionState(
-            graph.add_node(Node(statement.node_id, labels=statement.labels, attrs=attrs)),
-            state.bindings,
+            current.graph.add_node(Node(node_id, labels=statement.labels, attrs=attrs)),
+            current.bindings,
         )
     if isinstance(statement, AddEdgeStmt):
-        source_id = _resolve_ref(statement.source_id, state.bindings, "edge source", call_stack)
-        target_id = _resolve_ref(statement.target_id, state.bindings, "edge target", call_stack)
+        edge_id, current = _resolve_construction_ref(statement.edge_id, state, "edge", call_stack)
+        source_id = _resolve_ref(statement.source_id, current.bindings, "edge source", call_stack)
+        target_id = _resolve_ref(statement.target_id, current.bindings, "edge target", call_stack)
         attrs = _attrs_from_predicates(statement.attrs)
         return _ExecutionState(
-            graph.add_edge(Edge(statement.edge_id, source_id, target_id, labels=statement.labels, attrs=attrs)),
-            state.bindings,
+            current.graph.add_edge(Edge(edge_id, source_id, target_id, labels=statement.labels, attrs=attrs)),
+            current.bindings,
         )
     if isinstance(statement, SetNodeAttrStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
@@ -624,6 +626,38 @@ def _resolve_ref(ref: GraphRef, bindings: Bindings, kind: str, call_stack: tuple
             raise GraphMatchFailed(f"unbound {kind} variable {ref.display()} in rule {_location(call_stack)}")
         return value
     return ref
+
+
+def _resolve_construction_ref(
+    ref: GraphRef,
+    state: _ExecutionState,
+    kind: str,
+    call_stack: tuple[str, ...],
+) -> tuple[str, _ExecutionState]:
+    if isinstance(ref, VarRef):
+        value = state.bindings.get(ref.name)
+        if value is not None:
+            return value, state
+        if kind == "node":
+            value = _fresh_graph_id(ref.name, state.graph.node_ids)
+        elif kind == "edge":
+            value = _fresh_graph_id(ref.name, state.graph.edge_ids)
+        else:
+            raise RuntimeFailure(f"unsupported construction target kind: {kind}")
+        return value, _bind_variable(state, ref, value)
+    if not ref:
+        raise GraphMatchFailed(f"empty {kind} construction target in rule {_location(call_stack)}")
+    return ref, state
+
+
+def _fresh_graph_id(base: str, existing_ids: tuple[str, ...]) -> str:
+    existing = set(existing_ids)
+    if base not in existing:
+        return base
+    suffix = 2
+    while f"{base}_{suffix}" in existing:
+        suffix += 1
+    return f"{base}_{suffix}"
 
 
 def _try_match_ref(ref: GraphRef, value: str, state: _ExecutionState) -> _BindOutcome:
