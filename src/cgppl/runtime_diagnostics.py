@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from .ast import (
     AttrPredicate,
+    DeleteEdgeStmt,
+    DeleteNodeStmt,
     GraphRef,
     LiteralValue,
     MatchEdgeStmt,
@@ -162,6 +164,28 @@ def format_required_edge_attr_failure(
         AttrPredicate(statement.attr_name, statement.value),
         actual,
         call_stack,
+    )
+
+
+def format_missing_delete_node_target_failure(statement: DeleteNodeStmt, call_stack: tuple[str, ...]) -> str:
+    """Format a failed delete-node mutation target lookup."""
+
+    return format_graph_predicate_failure(
+        "missing delete target for",
+        "node",
+        statement.node_id,
+        call_stack=call_stack,
+    )
+
+
+def format_missing_delete_edge_target_failure(statement: DeleteEdgeStmt, call_stack: tuple[str, ...]) -> str:
+    """Format a failed delete-edge mutation target lookup."""
+
+    return format_graph_predicate_failure(
+        "missing delete target for",
+        "edge",
+        statement.edge_id,
+        call_stack=call_stack,
     )
 
 
