@@ -14,7 +14,7 @@ rule main => {
 }
 ```
 
-A missing endpoint is a construction precondition failure. The runtime reports that as a rule-local `GraphMatchFailed`, so it can participate in `try { ... } or { ... }` fallback.
+A missing strict endpoint is a construction precondition failure. The runtime reports that as a rule-local `GraphMatchFailed`, so it can participate in `try { ... } or { ... }` fallback.
 
 ## Rationale
 
@@ -22,9 +22,9 @@ Implicit endpoint creation in the default edge constructor would hide typos and 
 
 Explicit endpoints also keep graph rewrite programs easier to audit: node creation is visible at `add node`, and edge creation is visible at `add edge`. This matches the current deterministic binding model for construction target variables.
 
-## Reserved opt-in form
+## Opt-in endpoint auto-creation
 
-Endpoint auto-creation may still be useful, but it should be opt-in at the endpoint site. The reserved syntax is:
+Endpoint auto-creation is available only at endpoint sites marked with `add`:
 
 ```cgppl
 add edge $new_edge from add $source to add $target label "new";
@@ -32,18 +32,18 @@ add edge $new_edge from add $source to add $target label "new";
 
 Parser/AST status:
 
-- `from add ...` and `to add ...` now parse.
+- `from add ...` and `to add ...` parse.
 - `EndpointRef(ref, auto_create=True)` records the endpoint policy.
 - `AddEdgeStmt.source_endpoint` and `AddEdgeStmt.target_endpoint` expose that policy while preserving existing `source_id` / `target_id` compatibility fields.
 
-Intended runtime semantics:
+Runtime semantics:
 
 - Without `add`, endpoints remain strict graph references and must already exist.
 - With `add` before an endpoint variable, an unbound variable creates a fresh node ID using the existing deterministic construction-ID rule, then binds the variable.
 - With `add` before a literal endpoint, the runtime ensures a node with that literal ID exists; if absent, it creates it.
 - With `add` before an already-bound variable, the runtime uses the binding and ensures that the bound node exists.
-- Auto-created endpoint nodes start with no labels or attributes. Programs that need annotations should use explicit `add node` statements instead.
+- Auto-created endpoint nodes start with no labels or attributes. Programs that need annotations should use explicit `add node` or later `set node` statements.
 
 ## Next implementation step
 
-Implement runtime semantics for endpoint auto-creation metadata. The next helper should keep strict `_resolve_ref` behavior for endpoints without `add`, and for `auto_create=True` it should resolve or generate the endpoint ID, add the node if missing, and bind unbound endpoint variables before the edge is constructed.
+Add CLI-level coverage for `examples/endpoint-auto-create.cgppl` so the parser/runtime behavior is also tested through the command-line entry point.
