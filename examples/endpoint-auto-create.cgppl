@@ -1,0 +1,7 @@
+program EndpointAutoCreate {
+  rule main => {
+    add edge $created_edge from add $source to add $target label "created";
+    set node $source label "AutoSource";
+    set node $target label "AutoTarget";
+  }
+}
