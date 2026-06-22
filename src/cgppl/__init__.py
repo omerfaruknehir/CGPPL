@@ -26,4 +26,7 @@ from .runtime import (
     apply_rule,
     execute_program,
 )
+from .runtime_delete_target_wiring import install_delete_target_diagnostics
 from .semantics import Diagnostic, SemanticError, validate_program
+
+install_delete_target_diagnostics()

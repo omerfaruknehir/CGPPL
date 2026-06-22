@@ -169,7 +169,7 @@ def test_delete_edge_statement_removes_only_selected_edge():
 def test_delete_node_statement_fails_when_node_is_missing():
     program = parse_program('program Demo { rule main => delete node "missing"; }')
 
-    with pytest.raises(GraphMatchFailed, match="delete node target not found: missing"):
+    with pytest.raises(GraphMatchFailed, match='missing delete target for node "missing" in rule main'):
         execute_program(program, Graph.empty())
 
 

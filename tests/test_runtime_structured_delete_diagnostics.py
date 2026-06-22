@@ -5,7 +5,6 @@ from cgppl.parser import parse_program
 from cgppl.runtime import GraphMatchFailed, execute_program
 
 
-@pytest.mark.xfail(reason="delete mutation runtime paths are not wired to structured diagnostics yet")
 def test_delete_node_runtime_failure_reports_structured_context():
     program = parse_program('program Demo { rule main => delete node "missing"; }')
 
@@ -15,7 +14,6 @@ def test_delete_node_runtime_failure_reports_structured_context():
     assert str(error.value) == 'missing delete target for node "missing" in rule main'
 
 
-@pytest.mark.xfail(reason="delete mutation runtime paths are not wired to structured diagnostics yet")
 def test_delete_edge_runtime_failure_reports_structured_context():
     program = parse_program('program Demo { rule main => delete edge "missing"; }')
 
@@ -25,7 +23,6 @@ def test_delete_edge_runtime_failure_reports_structured_context():
     assert str(error.value) == 'missing delete target for edge "missing" in rule main'
 
 
-@pytest.mark.xfail(reason="delete mutation runtime paths are not wired to structured diagnostics yet")
 def test_bound_delete_node_runtime_failure_reports_structured_context():
     program = parse_program(
         'program Demo { rule main => { match node $n; delete node $n; delete node $n; } }'
@@ -38,7 +35,6 @@ def test_bound_delete_node_runtime_failure_reports_structured_context():
     assert str(error.value) == "missing delete target for node $n in rule main"
 
 
-@pytest.mark.xfail(reason="delete mutation runtime paths are not wired to structured diagnostics yet")
 def test_bound_delete_edge_runtime_failure_reports_structured_context():
     program = parse_program(
         'program Demo { rule main => { match edge $e; delete edge $e; delete edge $e; } }'
