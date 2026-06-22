@@ -66,4 +66,7 @@ def test_formats_full_graph_predicate_failures_with_rule_context():
         call_stack=("main",),
     )
 
-    assert message == 'no match for edge $e with label "blocked", where field source == $source in rule main'
+    assert message == (
+        'no match for edge $e with label "blocked", '
+        'where field source == $source in rule main'
+    )
