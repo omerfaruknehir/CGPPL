@@ -14,6 +14,7 @@ from .ast import (
     CallStmt,
     DeleteEdgeStmt,
     DeleteNodeStmt,
+    EndpointRef,
     FailStmt,
     FieldExpr,
     GraphRef,
@@ -233,8 +234,18 @@ def _execute_statement(
             raise GraphMatchFailed(f"add node failed: {error} in rule {_location(call_stack)}") from error
     if isinstance(statement, AddEdgeStmt):
         edge_id, current = _resolve_construction_ref(statement.edge_id, state, "edge", call_stack)
-        source_id = _resolve_ref(statement.source_id, current.bindings, "edge source", call_stack)
-        target_id = _resolve_ref(statement.target_id, current.bindings, "edge target", call_stack)
+        source_id, current = _resolve_endpoint_ref(
+            statement.source_endpoint,
+            current,
+            "edge source",
+            call_stack,
+        )
+        target_id, current = _resolve_endpoint_ref(
+            statement.target_endpoint,
+            current,
+            "edge target",
+            call_stack,
+        )
         attrs = _attrs_from_predicates(statement.attrs)
         try:
             return _ExecutionState(
@@ -654,6 +665,24 @@ def _resolve_construction_ref(
     if not ref:
         raise GraphMatchFailed(f"empty {kind} construction target in rule {_location(call_stack)}")
     return ref, state
+
+
+def _resolve_endpoint_ref(
+    endpoint: EndpointRef,
+    state: _ExecutionState,
+    kind: str,
+    call_stack: tuple[str, ...],
+) -> tuple[str, _ExecutionState]:
+    if not endpoint.auto_create:
+        return _resolve_ref(endpoint.ref, state.bindings, kind, call_stack), state
+
+    node_id, current = _resolve_construction_ref(endpoint.ref, state, "node", call_stack)
+    if current.graph.has_node(node_id):
+        return node_id, current
+    try:
+        return node_id, _ExecutionState(current.graph.add_node(Node(node_id)), current.bindings)
+    except GraphError as error:
+        raise GraphMatchFailed(f"add edge endpoint failed: {error} in rule {_location(call_stack)}") from error
 
 
 def _fresh_graph_id(base: str, existing_ids: tuple[str, ...]) -> str:

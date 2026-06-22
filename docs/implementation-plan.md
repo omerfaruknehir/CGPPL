@@ -14,7 +14,8 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - node and edge construction with inline labels and inline attributes
 - multi-label matcher, negative-requirement, and construction clauses
 - variable-bound construction IDs with deterministic fresh-ID generation
-- rule-local construction precondition diagnostics for duplicate IDs and missing edge endpoints
+- rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
+- endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -62,7 +63,7 @@ Semantics:
 - Bound construction variables resolve to their existing binding.
 - Unbound construction variables generate deterministic fresh IDs from the variable name, then bind the variable for later statements. For example, `$replacement` first tries `replacement`; if that ID already exists, it tries `replacement_2`, `replacement_3`, and so on.
 - Node construction variables avoid existing node IDs. Edge construction variables avoid existing edge IDs.
-- Edge source/target variables are still normal graph references: they must already be bound by a prior match or construction statement.
+- Edge source/target variables are still normal graph references unless the endpoint is explicitly marked with `add`.
 
 Implementation status:
 
@@ -75,7 +76,7 @@ Implementation status:
 
 ## Completed feature slice: constructor precondition diagnostics
 
-This slice converts graph-IR construction failures into rule-local failures. Construction duplicate-ID and missing-endpoint failures now include rule context and participate in `try-or` fallback behavior.
+This slice converts graph-IR construction failures into rule-local failures. Construction duplicate-ID and strict missing-endpoint failures now include rule context and participate in `try-or` fallback behavior.
 
 Example:
 
@@ -95,26 +96,39 @@ Implementation status:
 4. Done: tests cover duplicate-ID diagnostics, missing-endpoint diagnostics, and `try-or` fallback after construction precondition failure.
 5. Done: README status and notes were updated.
 
-## In-progress feature slice: endpoint construction policy
+## Completed feature slice: endpoint construction policy
 
 Decision: plain `add edge` keeps explicit endpoint preconditions. It does not auto-create missing endpoint nodes. This avoids silently creating misspelled or weakly matched nodes and keeps node creation visible in rewrite programs.
 
 Detailed policy is recorded in [`docs/endpoint-construction-policy.md`](endpoint-construction-policy.md).
 
-Reserved opt-in syntax for future endpoint auto-creation:
+Opt-in syntax for endpoint auto-creation:
 
 ```cgppl
-add edge $edge from add $source to add $target label "new";
+add edge $new_edge from add $source to add $target label "new";
 ```
+
+Runtime semantics:
+
+- Without `add`, endpoints remain strict graph references and must already exist.
+- With `add` before an endpoint variable, an unbound variable creates a fresh node ID using the existing deterministic construction-ID rule, then binds the variable.
+- With `add` before a literal endpoint, the runtime ensures a node with that literal ID exists; if absent, it creates it.
+- With `add` before an already-bound variable, the runtime uses the binding and ensures that the bound node exists.
+- Auto-created endpoint nodes start with no labels or attributes.
 
 Implementation status:
 
 1. Done: design decision recorded; default edge construction remains explicit-only.
-2. Done: reserved future syntax and proposed semantics were documented.
-3. Pending: add parser tests for endpoint specs.
-4. Pending: add an `EndpointRef` AST node or equivalent compatibility wrapper.
-5. Pending: update `AddEdgeStmt.source_id` and `AddEdgeStmt.target_id` to carry endpoint policy while preserving existing `GraphRef` behavior.
+2. Done: opt-in syntax and proposed semantics were documented.
+3. Done: parser tests cover strict, opt-in, and mixed endpoint policies.
+4. Done: `EndpointRef` records endpoint graph refs plus an `auto_create` flag.
+5. Done: `AddEdgeStmt` exposes `source_endpoint` and `target_endpoint` compatibility properties while preserving existing `source_id` / `target_id` fields.
+6. Done: parser records `from add ...` and `to add ...` as endpoint auto-create metadata.
+7. Done: runtime endpoint auto-creation creates or ensures endpoint nodes before constructing the edge.
+8. Done: runtime tests cover opt-in source creation, target creation, mixed strict/auto-create policy, existing literal endpoints, variable binding, and strict precondition preservation.
+9. Done: CLI execution tests cover endpoint auto-creation through the command-line entry point.
+10. Done: executable example and README syntax/status updates were added.
 
 Next concrete code step:
 
-- Add parser-level coverage for the reserved endpoint syntax and introduce the AST compatibility shape, without changing runtime construction semantics yet.
+- Start structured diagnostics for failed graph predicates by introducing a shared error-formatting helper for matcher and requirement failures.
