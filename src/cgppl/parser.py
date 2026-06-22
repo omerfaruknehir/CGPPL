@@ -11,6 +11,7 @@ from .ast import (
     CallStmt,
     DeleteEdgeStmt,
     DeleteNodeStmt,
+    EndpointRef,
     FailStmt,
     FieldExpr,
     GraphRef,
@@ -321,11 +322,19 @@ class Parser:
         if self._match_keyword("edge"):
             edge_id = self._parse_graph_ref()
             self._expect_keyword("from")
-            source_id = self._parse_graph_ref()
+            source_endpoint = self._parse_endpoint_ref()
             self._expect_keyword("to")
-            target_id = self._parse_graph_ref()
+            target_endpoint = self._parse_endpoint_ref()
             labels, attrs = self._parse_constructor_annotations("edge constructor")
-            return AddEdgeStmt(edge_id, source_id, target_id, labels=labels, attrs=attrs)
+            return AddEdgeStmt(
+                edge_id,
+                source_endpoint.ref,
+                target_endpoint.ref,
+                labels=labels,
+                attrs=attrs,
+                source_auto_create=source_endpoint.auto_create,
+                target_auto_create=target_endpoint.auto_create,
+            )
         token = self._peek()
         raise ParserError(f"expected 'node' or 'edge' after 'add' at {token.location()}")
 
@@ -452,6 +461,10 @@ class Parser:
             self.index += 1
             return FieldExpr(token.value)
         raise ParserError(f"expected where operand at {token.location()}")
+
+    def _parse_endpoint_ref(self) -> EndpointRef:
+        auto_create = self._match_keyword("add")
+        return EndpointRef(self._parse_graph_ref(), auto_create)
 
     def _parse_graph_ref(self) -> GraphRef:
         parenthesized = self._match_symbol("(")
