@@ -53,6 +53,12 @@ from .runtime_diagnostics import (
     format_forbidden_node_failure,
     format_match_edge_failure,
     format_match_node_failure,
+    format_required_edge_attr_failure,
+    format_required_edge_failure,
+    format_required_edge_label_failure,
+    format_required_node_attr_failure,
+    format_required_node_failure,
+    format_required_node_label_failure,
 )
 from .semantics import validate_program
 
@@ -160,54 +166,42 @@ def _execute_statement(
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if graph.has_node(node_id):
             return state
-        raise GraphMatchFailed(f"required node not found: {node_id} in rule {_location(call_stack)}")
+        raise GraphMatchFailed(format_required_node_failure(statement, call_stack))
     if isinstance(statement, RequireEdgeStmt):
         edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
         if graph.has_edge(edge_id):
             return state
-        raise GraphMatchFailed(f"required edge not found: {edge_id} in rule {_location(call_stack)}")
+        raise GraphMatchFailed(format_required_edge_failure(statement, call_stack))
     if isinstance(statement, RequireNodeAttrStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if not graph.has_node(node_id):
-            raise GraphMatchFailed(f"required node not found: {node_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_required_node_failure(RequireNodeStmt(statement.node_id), call_stack))
         actual = graph.get_node(node_id).attr(statement.attr_name)
         if _values_equal(actual, statement.value):
             return state
-        raise GraphMatchFailed(
-            "required node attribute mismatch: "
-            f"{node_id}.{statement.attr_name} expected {_format_value(statement.value)} "
-            f"but found {_format_value(actual)} in rule {_location(call_stack)}"
-        )
+        raise GraphMatchFailed(format_required_node_attr_failure(statement, actual, call_stack))
     if isinstance(statement, RequireEdgeAttrStmt):
         edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
         if not graph.has_edge(edge_id):
-            raise GraphMatchFailed(f"required edge not found: {edge_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_required_edge_failure(RequireEdgeStmt(statement.edge_id), call_stack))
         actual = graph.get_edge(edge_id).attr(statement.attr_name)
         if _values_equal(actual, statement.value):
             return state
-        raise GraphMatchFailed(
-            "required edge attribute mismatch: "
-            f"{edge_id}.{statement.attr_name} expected {_format_value(statement.value)} "
-            f"but found {_format_value(actual)} in rule {_location(call_stack)}"
-        )
+        raise GraphMatchFailed(format_required_edge_attr_failure(statement, actual, call_stack))
     if isinstance(statement, RequireNodeLabelStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if not graph.has_node(node_id):
-            raise GraphMatchFailed(f"required node not found: {node_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_required_node_failure(RequireNodeStmt(statement.node_id), call_stack))
         if graph.get_node(node_id).has_label(statement.label):
             return state
-        raise GraphMatchFailed(
-            f"required node label missing: {node_id} label {statement.label!r} in rule {_location(call_stack)}"
-        )
+        raise GraphMatchFailed(format_required_node_label_failure(statement, call_stack))
     if isinstance(statement, RequireEdgeLabelStmt):
         edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
         if not graph.has_edge(edge_id):
-            raise GraphMatchFailed(f"required edge not found: {edge_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_required_edge_failure(RequireEdgeStmt(statement.edge_id), call_stack))
         if graph.get_edge(edge_id).has_label(statement.label):
             return state
-        raise GraphMatchFailed(
-            f"required edge label missing: {edge_id} label {statement.label!r} in rule {_location(call_stack)}"
-        )
+        raise GraphMatchFailed(format_required_edge_label_failure(statement, call_stack))
     if isinstance(statement, MatchNodeStmt):
         return _execute_match_node(statement, state, call_stack)
     if isinstance(statement, MatchEdgeStmt):
