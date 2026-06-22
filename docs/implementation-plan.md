@@ -17,7 +17,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - shared source-like diagnostic formatting helpers for graph refs, literals, constraints, and rule locations
-- runtime-specific diagnostic adapter helpers for matcher and negative-requirement failures
+- runtime-specific structured diagnostics for matcher and negative-requirement failures
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -131,9 +131,9 @@ Implementation status:
 9. Done: CLI execution tests cover endpoint auto-creation through the command-line entry point.
 10. Done: executable example and README syntax/status updates were added.
 
-## In-progress feature slice: structured predicate diagnostics
+## Completed feature slice: structured predicate diagnostics
 
-This slice standardizes graph predicate failure messages before adding more predicate forms. The goal is to make match, require, negative-require, and future predicate failures report source-like refs and constraints consistently.
+This slice standardized graph predicate failure messages before adding more predicate forms. Matchers and negative requirements now report source-like refs and constraints consistently.
 
 Implementation status:
 
@@ -141,9 +141,27 @@ Implementation status:
 2. Done: added unit coverage for diagnostic formatting behavior.
 3. Done: added `src/cgppl/runtime_diagnostics.py` with runtime-specific adapters for node/edge matcher failures and negative node/edge requirement failures.
 4. Done: added unit coverage for runtime diagnostic adapter output with labels, attrs, `where` predicates, and nested rule locations.
-5. Pending: wire the runtime's matcher and negative-requirement failure paths to the runtime diagnostic adapters.
-6. Pending: add regression tests proving actual runtime failure messages use the structured helpers.
+5. Done: wired matcher and negative-requirement runtime failure paths to the runtime diagnostic adapters.
+6. Done: added regression tests proving actual runtime failure messages use the structured helpers for fresh matchers, bound matchers, and negative requirements.
+
+## In-progress feature slice: edge endpoint diagnostics
+
+This slice extends structured edge diagnostics so endpoint predicates are visible in failure messages.
+
+Target diagnostic shape:
+
+```text
+no match for edge $e from "a" to $target with label "link", where attr "weight" >= 2 in rule main
+forbidden match for edge $bad from $source to $target with label "blocked" in rule main
+```
+
+Implementation status:
+
+1. Done: shared graph-predicate formatting accepts optional `source_id` and `target_id` refs.
+2. Done: runtime diagnostic adapters pass edge source/target refs for edge matcher and negative-edge failures.
+3. Done: unit/runtime tests cover endpoint-aware edge diagnostic messages.
+4. Pending: verify CI and merge the endpoint diagnostics slice.
 
 Next concrete code step:
 
-- Import `format_match_node_failure`, `format_match_edge_failure`, `format_forbidden_node_failure`, and `format_forbidden_edge_failure` in `src/cgppl/runtime.py`, then replace the direct failure strings in `MatchNodeStmt`, `MatchEdgeStmt`, `RequireNoNodeStmt`, and `RequireNoEdgeStmt` paths.
+- After CI passes, merge this slice and start structured diagnostics for positive `require node` / `require edge` label and attribute failures.
