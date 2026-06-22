@@ -41,6 +41,12 @@ GraphRef = str | VarRef
 
 
 @dataclass(frozen=True, slots=True)
+class EndpointRef:
+    ref: GraphRef
+    auto_create: bool = False
+
+
+@dataclass(frozen=True, slots=True)
 class AttrPredicate:
     name: str
     value: LiteralValue
@@ -265,11 +271,21 @@ class AddEdgeStmt:
     label: str | None = None
     attrs: tuple[AttrPredicate, ...] = ()
     labels: tuple[str, ...] = ()
+    source_auto_create: bool = False
+    target_auto_create: bool = False
 
     def __post_init__(self) -> None:
         labels = _normalize_labels(self.label, tuple(self.labels))
         object.__setattr__(self, "labels", labels)
         object.__setattr__(self, "label", labels[0] if labels else None)
+
+    @property
+    def source_endpoint(self) -> EndpointRef:
+        return EndpointRef(self.source_id, self.source_auto_create)
+
+    @property
+    def target_endpoint(self) -> EndpointRef:
+        return EndpointRef(self.target_id, self.target_auto_create)
 
 
 @dataclass(frozen=True, slots=True)
