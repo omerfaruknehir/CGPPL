@@ -44,6 +44,10 @@ Runtime semantics:
 - With `add` before an already-bound variable, the runtime uses the binding and ensures that the bound node exists.
 - Auto-created endpoint nodes start with no labels or attributes. Programs that need annotations should use explicit `add node` or later `set node` statements.
 
+## Validation coverage
+
+Endpoint auto-creation is covered through parser tests, runtime tests, and CLI execution tests.
+
 ## Next implementation step
 
-Add CLI-level coverage for `examples/endpoint-auto-create.cgppl` so the parser/runtime behavior is also tested through the command-line entry point.
+Start structured diagnostics for failed graph predicates by introducing a shared error-formatting helper for matcher and requirement failures.
