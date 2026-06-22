@@ -157,7 +157,10 @@ def test_block_backtracking_fails_after_exhausting_all_candidates():
         )
     )
 
-    with pytest.raises(RuleFailed, match="attribute mismatch"):
+    with pytest.raises(
+        RuleFailed,
+        match=r'missing requirement for node \$n with attr "kind" = "winner"; found "also-loser" in rule main',
+    ):
         execute_program(program, graph)
 
 
