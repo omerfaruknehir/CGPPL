@@ -16,6 +16,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - variable-bound construction IDs with deterministic fresh-ID generation
 - rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
+- shared source-like diagnostic formatting helpers for graph refs, literals, constraints, and rule locations
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -129,6 +130,17 @@ Implementation status:
 9. Done: CLI execution tests cover endpoint auto-creation through the command-line entry point.
 10. Done: executable example and README syntax/status updates were added.
 
+## In-progress feature slice: structured predicate diagnostics
+
+This slice standardizes graph predicate failure messages before adding more predicate forms. The goal is to make match, require, negative-require, and future predicate failures report source-like refs and constraints consistently.
+
+Implementation status:
+
+1. Done: added `src/cgppl/diagnostics.py` with shared formatting helpers for graph refs, literals, where predicates, graph predicate constraints, graph predicate failures, and rule call-stack locations.
+2. Done: added unit coverage for diagnostic formatting behavior.
+3. Pending: wire the runtime's matcher and requirement failure paths to the shared helper.
+4. Pending: add regression tests for multi-label and `where` predicate failure messages after runtime wiring.
+
 Next concrete code step:
 
-- Start structured diagnostics for failed graph predicates by introducing a shared error-formatting helper for matcher and requirement failures.
+- Replace runtime-local `_format_value()`, `_format_graph_ref()`, and direct matcher/requirement failure strings with the new diagnostic helpers, starting with `MatchNodeStmt`, `MatchEdgeStmt`, `RequireNoNodeStmt`, and `RequireNoEdgeStmt`.
