@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from .ast import (
     AttrPredicate,
     DeleteEdgeStmt,
@@ -18,11 +20,20 @@ from .ast import (
     RequireNodeAttrStmt,
     RequireNodeLabelStmt,
     RequireNodeStmt,
+    SetEdgeAttrStmt,
+    SetEdgeLabelStmt,
+    SetNodeAttrStmt,
+    SetNodeLabelStmt,
+    UnsetEdgeAttrStmt,
+    UnsetEdgeLabelStmt,
+    UnsetNodeAttrStmt,
+    UnsetNodeLabelStmt,
     VarExpr,
 )
 from .diagnostics import (
     format_graph_predicate,
     format_graph_predicate_failure,
+    format_graph_ref,
     format_literal,
     format_rule_location,
     format_where_expr,
@@ -195,6 +206,126 @@ def format_missing_delete_edge_target_failure(
     )
 
 
+def format_missing_set_node_attr_target_failure(
+    statement: SetNodeAttrStmt,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed set-node-attribute mutation target lookup."""
+
+    return _format_missing_annotation_target_failure(
+        "set",
+        "node",
+        statement.node_id,
+        call_stack,
+        attr_name=statement.attr_name,
+    )
+
+
+def format_missing_set_edge_attr_target_failure(
+    statement: SetEdgeAttrStmt,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed set-edge-attribute mutation target lookup."""
+
+    return _format_missing_annotation_target_failure(
+        "set",
+        "edge",
+        statement.edge_id,
+        call_stack,
+        attr_name=statement.attr_name,
+    )
+
+
+def format_missing_set_node_label_target_failure(
+    statement: SetNodeLabelStmt,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed set-node-label mutation target lookup."""
+
+    return _format_missing_annotation_target_failure(
+        "set",
+        "node",
+        statement.node_id,
+        call_stack,
+        label=statement.label,
+    )
+
+
+def format_missing_set_edge_label_target_failure(
+    statement: SetEdgeLabelStmt,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed set-edge-label mutation target lookup."""
+
+    return _format_missing_annotation_target_failure(
+        "set",
+        "edge",
+        statement.edge_id,
+        call_stack,
+        label=statement.label,
+    )
+
+
+def format_missing_unset_node_attr_target_failure(
+    statement: UnsetNodeAttrStmt,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed unset-node-attribute mutation target lookup."""
+
+    return _format_missing_annotation_target_failure(
+        "unset",
+        "node",
+        statement.node_id,
+        call_stack,
+        attr_name=statement.attr_name,
+    )
+
+
+def format_missing_unset_edge_attr_target_failure(
+    statement: UnsetEdgeAttrStmt,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed unset-edge-attribute mutation target lookup."""
+
+    return _format_missing_annotation_target_failure(
+        "unset",
+        "edge",
+        statement.edge_id,
+        call_stack,
+        attr_name=statement.attr_name,
+    )
+
+
+def format_missing_unset_node_label_target_failure(
+    statement: UnsetNodeLabelStmt,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed unset-node-label mutation target lookup."""
+
+    return _format_missing_annotation_target_failure(
+        "unset",
+        "node",
+        statement.node_id,
+        call_stack,
+        label=statement.label,
+    )
+
+
+def format_missing_unset_edge_label_target_failure(
+    statement: UnsetEdgeLabelStmt,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed unset-edge-label mutation target lookup."""
+
+    return _format_missing_annotation_target_failure(
+        "unset",
+        "edge",
+        statement.edge_id,
+        call_stack,
+        label=statement.label,
+    )
+
+
 def format_unbound_where_variable_failure(expr: VarExpr, call_stack: tuple[str, ...]) -> str:
     """Format an unbound variable used while evaluating a where predicate."""
 
@@ -213,3 +344,23 @@ def _format_required_attr_failure(
         f"missing requirement for {requirement}; "
         f"found {format_literal(actual)} in rule {format_rule_location(call_stack)}"
     )
+
+
+def _format_missing_annotation_target_failure(
+    action: str,
+    kind: str,
+    ref: GraphRef,
+    call_stack: tuple[str, ...],
+    *,
+    attr_name: str | None = None,
+    label: str | None = None,
+) -> str:
+    target = f"{kind} {format_graph_ref(ref)}"
+    constraints: list[str] = []
+    if attr_name is not None:
+        constraints.append(f"attr {json.dumps(attr_name)}")
+    if label is not None:
+        constraints.append(f"label {json.dumps(label)}")
+    if constraints:
+        target = f"{target} with {', '.join(constraints)}"
+    return f"missing {action} target for {target} in rule {format_rule_location(call_stack)}"
