@@ -132,9 +132,14 @@ rule main => try {
 - `add node` and `add edge` can construct labels and attributes in a single statement; duplicate inline attribute names and duplicate label clauses in the same predicate/constructor are rejected by the parser.
 - Construction targets may be literal IDs or `$variables`. Bound variables resolve to their existing binding. Unbound construction target variables generate deterministic fresh IDs from the variable name, then bind that variable for later statements; for example, `$replacement` tries `replacement`, then `replacement_2`, `replacement_3`, and so on.
 - Construction duplicate-ID and missing-endpoint failures are reported as rule-local failures, so they include rule context and can be handled by `try-or` fallback branches.
+- Plain `add edge` keeps explicit endpoint preconditions: source and target nodes must already exist. Endpoint auto-creation is reserved for a future opt-in syntax, documented in `docs/endpoint-construction-policy.md`.
 - `try-or` rolls back graph and variable changes from the failed branch before trying the fallback branch.
 - `unset` is idempotent for missing labels/attributes but still fails if the target node or edge does not exist.
 
 ## Next implementation step
 
-Decide whether edge construction should keep explicit endpoint preconditions or grow an opt-in auto-create endpoint form. The practical next code step is to add a syntax design note and tests for the chosen behavior before changing constructor semantics.
+Implement the AST/parser compatibility slice for endpoint specs. The first code change should add an `EndpointRef` shape for `AddEdgeStmt.source_id` and `AddEdgeStmt.target_id`, keep existing endpoint syntax compatible, and add parser tests for the reserved opt-in form:
+
+```cgppl
+add edge $edge from add $source to add $target label "new";
+```
