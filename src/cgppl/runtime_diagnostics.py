@@ -354,6 +354,12 @@ def format_add_edge_endpoint_failure(message: str, call_stack: tuple[str, ...]) 
     return f"add edge endpoint failed: {message} in rule {format_rule_location(call_stack)}"
 
 
+def format_unbound_graph_ref_failure(ref: GraphRef, kind: str, call_stack: tuple[str, ...]) -> str:
+    """Format an unbound graph reference variable lookup."""
+
+    return f"unbound {kind} variable {format_graph_ref(ref)} in rule {format_rule_location(call_stack)}"
+
+
 def format_unbound_where_variable_failure(expr: VarExpr, call_stack: tuple[str, ...]) -> str:
     """Format an unbound variable used while evaluating a where predicate."""
 
