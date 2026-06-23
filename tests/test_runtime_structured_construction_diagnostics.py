@@ -27,7 +27,7 @@ def test_add_edge_missing_endpoint_runtime_failure_reports_structured_target():
     )
 
 
-def test_add_edge_endpoint_runtime_failure_reports_structured_context():
+def test_add_edge_auto_created_endpoint_then_missing_target_reports_add_edge_context():
     program = parse_program(
         'program Demo { rule main => { match node $source; delete node $source; '
         'add edge "edge" from add $source to "target"; } }'
@@ -38,5 +38,5 @@ def test_add_edge_endpoint_runtime_failure_reports_structured_context():
         execute_program(program, graph)
 
     assert str(error.value) == (
-        "add edge endpoint failed: edge edge references missing target node: target in rule main"
+        'add edge "edge" failed: edge edge references missing target node: target in rule main'
     )
