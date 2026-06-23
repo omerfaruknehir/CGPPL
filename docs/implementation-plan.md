@@ -17,7 +17,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - shared source-like diagnostic formatting helpers for graph refs, literals, constraints, where expressions, and rule locations
-- direct runtime structured diagnostics for matcher, negative-requirement, positive-requirement, unbound `where` variable, delete-target, and annotation-target mutation paths
+- direct runtime structured diagnostics for matcher, negative-requirement, positive-requirement, unbound `where` variable, delete-target, annotation-target mutation, and construction failure paths
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -252,15 +252,15 @@ Implementation status:
 4. Done: the direct-wiring regression contract was enabled.
 5. Done: CI passed and the direct mutation-target runtime wiring cleanup was merged.
 
-## In-progress feature slice: construction failure structured diagnostics
+## Completed feature slice: construction failure structured diagnostics
 
-This slice routes construction-time failures toward the same runtime diagnostic helper layer used by predicate and mutation failures. `AddNodeStmt`, `AddEdgeStmt`, and opt-in endpoint auto-creation still need direct runtime wiring.
+This slice routes construction-time failures through the same structured runtime diagnostic helper layer used by predicate and mutation failures. `AddNodeStmt`, `AddEdgeStmt`, and opt-in endpoint auto-creation now use canonical direct runtime dispatch.
 
 Target diagnostic shape:
 
 ```text
 add node "existing" failed: duplicate node id: existing in rule main
-add edge $edge failed: edge edge references missing target node: missing in rule main
+add edge $e failed: edge e references missing target node: missing in rule main
 add edge endpoint failed: duplicate node id: source in rule main
 ```
 
@@ -268,10 +268,13 @@ Implementation status:
 
 1. Done: added formatter helpers for add-node construction failures, add-edge construction failures, and add-edge endpoint auto-create failures.
 2. Done: unit tests cover helper output for literal and variable construction targets.
-3. Done: added xfail runtime regression coverage documenting the intended construction failure messages.
-4. Done: added `docs/construction-diagnostics.md` describing this slice.
-5. Pending: wire `AddNodeStmt`, `AddEdgeStmt`, and `_resolve_endpoint_ref` GraphError wrappers in `src/cgppl/runtime.py` to the helpers.
+3. Done: runtime regression coverage verifies add-node, add-edge, and endpoint auto-create structured failures.
+4. Done: `src/cgppl/runtime.py` imports and calls the construction diagnostic helpers directly.
+5. Done: the temporary `src/cgppl/runtime_construction_wiring.py` adapter was removed.
+6. Done: package initialization no longer imports or calls the construction adapter installer.
+7. Done: the direct-wiring regression contract is active.
+8. Done: PR #26 CI passed and the construction direct-runtime wiring cleanup was merged.
 
 Next concrete code step:
 
-- Import `format_add_node_failure`, `format_add_edge_failure`, and `format_add_edge_endpoint_failure` in `src/cgppl/runtime.py`; replace the direct construction `GraphError` wrappers; remove xfail markers from `tests/test_runtime_structured_construction_diagnostics.py`; update stale tests that expect `add node failed:` or `add edge failed:` direct strings.
+- Start the next diagnostics cleanup slice by auditing remaining `GraphMatchFailed(` direct-string sites in `src/cgppl/runtime.py`, then add regression coverage and helper wrappers for the highest-value remaining legacy runtime failure path.
