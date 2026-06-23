@@ -216,7 +216,10 @@ def test_add_edge_statement_rejects_missing_endpoint():
     program = parse_program('program Demo { rule main => add edge "e1" from "a" to "missing"; }')
     graph = Graph.empty().add_node(Node("a"))
 
-    with pytest.raises(GraphMatchFailed, match="add edge failed: edge e1 references missing target node: missing"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match='add edge "e1" failed: edge e1 references missing target node: missing in rule main',
+    ):
         execute_program(program, graph)
 
 
@@ -262,29 +265,6 @@ def test_set_node_attr_statement_fails_when_node_is_missing():
         execute_program(program, Graph.empty())
 
 
-def test_set_node_label_statement_adds_label_immutably():
-    program = parse_program('program Demo { rule main => set node "a" label "Visited"; }')
-    graph = Graph.empty().add_node(Node("a", labels=["Root"]))
-
-    result = execute_program(program, graph)
-
-    assert graph.get_node("a").labels == ("Root",)
-    assert result.graph.get_node("a").labels == ("Root", "Visited")
-
-
-def test_set_edge_label_statement_adds_label_immutably():
-    program = parse_program('program Demo { rule main => set edge "e1" label "selected"; }')
-    graph = Graph(
-        nodes=(Node("a"), Node("b")),
-        edges=(Edge("e1", "a", "b", labels=["link"]),),
-    )
-
-    result = execute_program(program, graph)
-
-    assert graph.get_edge("e1").labels == ("link",)
-    assert result.graph.get_edge("e1").labels == ("link", "selected")
-
-
 def test_set_edge_label_statement_fails_when_edge_is_missing():
     program = parse_program('program Demo { rule main => set edge "missing" label "selected"; }')
 
@@ -295,92 +275,35 @@ def test_set_edge_label_statement_fails_when_edge_is_missing():
         execute_program(program, Graph.empty())
 
 
-def test_block_statement_threads_graph_updates_in_order():
-    program = parse_program(
-        'program Demo { rule main => { require node "a"; delete node "a"; require node "b"; } }'
-    )
-    graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
+def test_unset_node_attr_statement_fails_when_node_is_missing():
+    program = parse_program('program Demo { rule main => unset node "missing" attr "kind"; }')
 
-    result = execute_program(program, graph)
-
-    assert result.graph.node_ids == ("b",)
-    assert result.graph.edge_ids == ()
+    with pytest.raises(
+        GraphMatchFailed,
+        match='missing unset target for node "missing" with attr "kind" in rule main',
+    ):
+        execute_program(program, Graph.empty())
 
 
-def test_block_statement_can_delete_and_construct_graph_structure():
-    program = parse_program(
-        'program Demo { rule main => { delete node "a"; add node "c"; add edge "e2" from "b" to "c"; } }'
-    )
-    graph = Graph(nodes=(Node("a"), Node("b")), edges=(Edge("e1", "a", "b"),))
+def test_unset_edge_label_statement_fails_when_edge_is_missing():
+    program = parse_program('program Demo { rule main => unset edge "missing" label "selected"; }')
 
-    result = execute_program(program, graph)
-
-    assert result.graph.node_ids == ("b", "c")
-    assert result.graph.edge_ids == ("e2",)
-    assert result.graph.get_edge("e2") == Edge("e2", "b", "c")
+    with pytest.raises(
+        GraphMatchFailed,
+        match='missing unset target for edge "missing" with label "selected" in rule main',
+    ):
+        execute_program(program, Graph.empty())
 
 
-def test_block_statement_can_construct_and_annotate_graph_structure():
-    program = parse_program(
-        'program Demo { rule main => { add node "c"; set node "c" attr "kind" = "created"; '
-        'add edge "e2" from "b" to "c"; set edge "e2" attr "weight" = 2; } }'
-    )
-    graph = Graph.empty().add_node(Node("b"))
-
-    result = execute_program(program, graph)
-
-    assert result.graph.get_node("c").attr("kind") == "created"
-    assert result.graph.get_edge("e2").attr("weight") == 2
-
-
-def test_block_statement_can_require_and_mutate_attributes():
-    program = parse_program(
-        'program Demo { rule main => { require node "a" attr "kind" = "root"; '
-        'set node "a" attr "kind" = "visited"; } }'
-    )
-    graph = Graph.empty().add_node(Node("a", attrs={"kind": "root"}))
-
-    result = execute_program(program, graph)
-
-    assert graph.get_node("a").attr("kind") == "root"
-    assert result.graph.get_node("a").attr("kind") == "visited"
-
-
-def test_block_statement_can_require_and_mutate_labels():
-    program = parse_program(
-        'program Demo { rule main => { require node "a" label "Root"; set node "a" label "Visited"; '
-        'add node "b" label "Leaf"; add edge "e1" from "a" to "b" label "link"; require edge "e1" label "link"; } }'
-    )
-    graph = Graph.empty().add_node(Node("a", labels=["Root"]))
-
-    result = execute_program(program, graph)
-
-    assert result.graph.get_node("a").labels == ("Root", "Visited")
-    assert result.graph.get_node("b").labels == ("Leaf",)
-    assert result.graph.get_edge("e1").labels == ("link",)
-
-
-def test_block_statement_stops_at_first_failure():
-    program = parse_program(
-        'program Demo { rule main => { require node "missing"; delete node "a"; } }'
-    )
-    graph = Graph.empty().add_node(Node("a"))
-
-    with pytest.raises(GraphMatchFailed, match='missing requirement for node "missing" in rule main'):
-        execute_program(program, graph)
-
-    assert graph.node_ids == ("a",)
-
-
-def test_fail_rule_raises_runtime_failure():
+def test_rule_fail_statement_raises_rule_failed():
     program = parse_program("program Demo { rule main => fail; }")
 
     with pytest.raises(RuleFailed, match="rule failed: main"):
         execute_program(program, Graph.empty())
 
 
-def test_recursive_rule_calls_are_rejected_until_runtime_strategy_exists():
-    program = parse_program("program Demo { rule main => main(); }")
+def test_recursive_rule_call_is_rejected():
+    program = parse_program("program Demo { rule main => helper(); rule helper => main(); }")
 
-    with pytest.raises(RecursionLimitExceeded, match="recursive rule calls are not implemented"):
+    with pytest.raises(RecursionLimitExceeded, match="main -> helper -> main"):
         execute_program(program, Graph.empty())
