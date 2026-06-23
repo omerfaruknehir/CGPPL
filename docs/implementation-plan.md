@@ -18,7 +18,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - shared source-like diagnostic formatting helpers for graph refs, literals, constraints, where expressions, and rule locations
 - direct runtime structured diagnostics for matcher, negative-requirement, positive-requirement, and unbound `where` variable paths
-- adapter-backed structured diagnostics for delete-target mutation failures
+- adapter-backed structured diagnostics for delete-target and annotation-target mutation failures
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -216,10 +216,38 @@ Implementation status:
 5. Done: stale runtime expectations were updated from the legacy `delete node target not found` wording.
 6. Done: CI passed and the delete-target diagnostics slice was merged.
 
-## In-progress cleanup slice: direct delete-target runtime wiring
+## Completed feature slice: annotation target structured diagnostics
 
-The delete-target diagnostics currently work through `src/cgppl/runtime_delete_target_wiring.py`. This matches the incremental adapter pattern used earlier, but it should be folded into canonical runtime dispatch.
+This slice extends structured diagnostics to label/attribute mutation target lookups.
+
+Target diagnostic shape:
+
+```text
+missing set target for node "missing" with attr "kind" in rule main
+missing set target for edge $e with label "selected" in rule main
+missing unset target for node $n with attr "kind" in rule main
+missing unset target for edge "missing" with label "selected" in rule main
+```
+
+Implementation status:
+
+1. Done: added missing set/unset target helpers for node attrs, edge attrs, node labels, and edge labels to `src/cgppl/runtime_diagnostics.py`.
+2. Done: unit tests cover all annotation-target diagnostic helper variants.
+3. Done: a narrow runtime adapter wires annotation mutation target misses to the structured helpers.
+4. Done: runtime regression coverage now covers all literal annotation target miss shapes.
+5. Done: runtime regression coverage now covers bound node/edge targets that are matched, deleted, and then used by a later annotation mutation.
+6. Done: stale runtime expectations were updated from the legacy `set ... target not found` and `unset ... target not found` wording.
+7. Done: CI passed and the expanded annotation-target diagnostics coverage slice was merged.
+
+## In-progress cleanup slice: direct mutation-target runtime wiring
+
+Delete-target and annotation-target diagnostics currently work through these adapter modules:
+
+- `src/cgppl/runtime_delete_target_wiring.py`
+- `src/cgppl/runtime_annotation_target_wiring.py`
+
+This matches the incremental adapter pattern used earlier, but both should be folded into canonical runtime dispatch.
 
 Next concrete code step:
 
-- Create `delete-target-direct-runtime-wiring`, import the delete-target helpers directly in `src/cgppl/runtime.py`, replace the `DeleteNodeStmt` and `DeleteEdgeStmt` direct missing-target strings there, delete `src/cgppl/runtime_delete_target_wiring.py`, and remove its installer from `src/cgppl/__init__.py`.
+- Create or continue `mutation-target-direct-runtime-wiring`, import all mutation-target helpers directly in `src/cgppl/runtime.py`, replace the direct missing-target strings in `DeleteNodeStmt`, `DeleteEdgeStmt`, `Set*Stmt`, and `Unset*Stmt`, delete both adapter modules, and remove their installers from `src/cgppl/__init__.py`.
