@@ -102,7 +102,10 @@ def test_bound_node_construction_variable_resolves_to_existing_binding_and_rejec
     )
     graph = Graph(nodes=(Node("root", labels=("Root",)),))
 
-    with pytest.raises(GraphMatchFailed, match="add node failed: duplicate node id: root in rule main"):
+    with pytest.raises(
+        GraphMatchFailed,
+        match="add node \\$source failed: duplicate node id: root in rule main",
+    ):
         execute_program(program, graph)
 
 
@@ -139,7 +142,7 @@ def test_missing_edge_endpoint_reports_rule_failure_with_context():
 
     with pytest.raises(
         GraphMatchFailed,
-        match="add edge failed: edge new references missing source node: missing in rule main",
+        match='add edge "new" failed: edge new references missing source node: missing in rule main',
     ):
         execute_program(program, graph)
 
