@@ -72,6 +72,7 @@ from .runtime_diagnostics import (
     format_required_node_attr_failure,
     format_required_node_failure,
     format_required_node_label_failure,
+    format_unbound_graph_ref_failure,
     format_unbound_where_variable_failure,
 )
 from .semantics import validate_program
@@ -641,7 +642,7 @@ def _resolve_ref(ref: GraphRef, bindings: Bindings, kind: str, call_stack: tuple
     if isinstance(ref, VarRef):
         value = bindings.get(ref.name)
         if value is None:
-            raise GraphMatchFailed(f"unbound {kind} variable {ref.display()} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_unbound_graph_ref_failure(ref, kind, call_stack))
         return value
     return ref
 
