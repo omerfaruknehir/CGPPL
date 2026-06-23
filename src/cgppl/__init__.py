@@ -26,4 +26,7 @@ from .runtime import (
     apply_rule,
     execute_program,
 )
+from .runtime_construction_wiring import install_construction_diagnostics
 from .semantics import Diagnostic, SemanticError, validate_program
+
+install_construction_diagnostics()
