@@ -17,8 +17,7 @@ The current runtime can lex, parse, validate, and execute a useful graph-rewrite
 - rule-local construction precondition diagnostics for duplicate IDs and strict missing edge endpoints
 - endpoint construction policy metadata and opt-in runtime endpoint auto-creation for `add edge` source/target refs
 - shared source-like diagnostic formatting helpers for graph refs, literals, constraints, where expressions, and rule locations
-- direct runtime structured diagnostics for matcher, negative-requirement, positive-requirement, and unbound `where` variable paths
-- adapter-backed structured diagnostics for delete-target and annotation-target mutation failures
+- direct runtime structured diagnostics for matcher, negative-requirement, positive-requirement, unbound `where` variable, delete-target, and annotation-target mutation paths
 - label/attribute mutation and idempotent annotation removal
 - constructed-object lifecycle tests for match/require/delete/no-require flows
 
@@ -212,9 +211,10 @@ Implementation status:
 1. Done: added `format_missing_delete_node_target_failure(...)` and `format_missing_delete_edge_target_failure(...)` to the runtime diagnostic helper layer.
 2. Done: unit tests cover the new delete-target diagnostic helpers.
 3. Done: runtime regression tests cover literal and bound delete-node/delete-edge target failures.
-4. Done: a narrow runtime adapter wires `DeleteNodeStmt` and `DeleteEdgeStmt` missing-target paths to the structured helpers.
-5. Done: stale runtime expectations were updated from the legacy `delete node target not found` wording.
-6. Done: CI passed and the delete-target diagnostics slice was merged.
+4. Done: stale runtime expectations were updated from the legacy `delete node target not found` wording.
+5. Done: CI passed and the delete-target diagnostics slice was merged.
+6. Done: delete-target diagnostics are wired directly in `src/cgppl/runtime.py`.
+7. Done: the temporary delete-target adapter module was removed and package initialization no longer mutates runtime dispatch.
 
 ## Completed feature slice: annotation target structured diagnostics
 
@@ -233,21 +233,37 @@ Implementation status:
 
 1. Done: added missing set/unset target helpers for node attrs, edge attrs, node labels, and edge labels to `src/cgppl/runtime_diagnostics.py`.
 2. Done: unit tests cover all annotation-target diagnostic helper variants.
-3. Done: a narrow runtime adapter wires annotation mutation target misses to the structured helpers.
-4. Done: runtime regression coverage now covers all literal annotation target miss shapes.
-5. Done: runtime regression coverage now covers bound node/edge targets that are matched, deleted, and then used by a later annotation mutation.
-6. Done: stale runtime expectations were updated from the legacy `set ... target not found` and `unset ... target not found` wording.
-7. Done: CI passed and the expanded annotation-target diagnostics coverage slice was merged.
+3. Done: runtime regression coverage now covers all literal annotation target miss shapes.
+4. Done: runtime regression coverage now covers bound node/edge targets that are matched, deleted, and then used by a later annotation mutation.
+5. Done: stale runtime expectations were updated from the legacy `set ... target not found` and `unset ... target not found` wording.
+6. Done: CI passed and the expanded annotation-target diagnostics coverage slice was merged.
+7. Done: annotation-target diagnostics are wired directly in `src/cgppl/runtime.py`.
+8. Done: the temporary annotation-target adapter module was removed and package initialization no longer mutates runtime dispatch.
 
-## In-progress cleanup slice: direct mutation-target runtime wiring
+## Completed cleanup slice: direct mutation-target runtime wiring
 
-Delete-target and annotation-target diagnostics currently work through these adapter modules:
+Delete-target and annotation-target diagnostics now use canonical runtime dispatch instead of import-time adapters.
 
-- `src/cgppl/runtime_delete_target_wiring.py`
-- `src/cgppl/runtime_annotation_target_wiring.py`
+Implementation status:
 
-This matches the incremental adapter pattern used earlier, but both should be folded into canonical runtime dispatch.
+1. Done: `src/cgppl/runtime.py` imports and calls all delete-target and annotation-target diagnostic helpers directly.
+2. Done: `src/cgppl/runtime_delete_target_wiring.py` and `src/cgppl/runtime_annotation_target_wiring.py` were removed.
+3. Done: package initialization no longer imports or calls mutation-target adapter installers.
+4. Done: the direct-wiring regression contract was enabled.
+5. Done: CI passed and the direct mutation-target runtime wiring cleanup was merged.
+
+## Next feature slice: construction failure structured diagnostics
+
+The next useful diagnostics slice is construction-time failure cleanup. `AddNodeStmt`, `AddEdgeStmt`, and opt-in endpoint auto-creation still wrap `GraphError` with direct runtime strings instead of routing through `src/cgppl/runtime_diagnostics.py`.
+
+Target diagnostic shape:
+
+```text
+add node "existing" failed: duplicate node id: existing in rule main
+add edge $edge failed: edge edge references missing target node: missing in rule main
+add edge endpoint failed: duplicate node id: source in rule main
+```
 
 Next concrete code step:
 
-- Create or continue `mutation-target-direct-runtime-wiring`, import all mutation-target helpers directly in `src/cgppl/runtime.py`, replace the direct missing-target strings in `DeleteNodeStmt`, `DeleteEdgeStmt`, `Set*Stmt`, and `Unset*Stmt`, delete both adapter modules, and remove their installers from `src/cgppl/__init__.py`.
+- Add formatter helpers for `AddNodeStmt`, `AddEdgeStmt`, and endpoint auto-create failures in `src/cgppl/runtime_diagnostics.py`, add unit coverage for those helpers, then wire the `GraphError` wrappers in `src/cgppl/runtime.py` to the helpers and update stale construction failure expectations.
