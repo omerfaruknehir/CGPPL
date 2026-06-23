@@ -1,9 +1,6 @@
 import pathlib
 
-import pytest
 
-
-@pytest.mark.xfail(reason="construction diagnostics still use an import-time adapter")
 def test_construction_diagnostics_are_wired_directly_in_runtime():
     package_init = pathlib.Path("src/cgppl/__init__.py").read_text()
     runtime_source = pathlib.Path("src/cgppl/runtime.py").read_text()

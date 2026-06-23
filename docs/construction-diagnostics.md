@@ -33,3 +33,23 @@ Direct runtime wiring checklist:
 5. Delete `src/cgppl/runtime_construction_wiring.py`.
 6. Remove `install_construction_diagnostics` import/call from `src/cgppl/__init__.py`.
 7. Remove the `xfail` marker from `tests/test_runtime_construction_direct_wiring.py`.
+
+Prepared cleanup branch:
+
+- `construction-direct-runtime-wiring`
+
+Exact runtime replacement targets verified on `main`:
+
+```python
+raise GraphMatchFailed(f"add node failed: {error} in rule {_location(call_stack)}") from error
+raise GraphMatchFailed(f"add edge failed: {error} in rule {_location(call_stack)}") from error
+raise GraphMatchFailed(f"add edge endpoint failed: {error} in rule {_location(call_stack)}") from error
+```
+
+Exact replacement calls:
+
+```python
+raise GraphMatchFailed(format_add_node_failure(statement, str(error), call_stack)) from error
+raise GraphMatchFailed(format_add_edge_failure(statement, str(error), call_stack)) from error
+raise GraphMatchFailed(format_add_edge_endpoint_failure(str(error), call_stack)) from error
+```
