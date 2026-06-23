@@ -2,13 +2,10 @@
 
 from pathlib import Path
 
-import pytest
-
 import cgppl
 import cgppl.runtime as runtime_module
 
 
-@pytest.mark.xfail(reason="mutation target diagnostics are still installed through adapter modules")
 def test_mutation_target_diagnostics_are_wired_directly_in_runtime():
     package_init = Path(cgppl.__file__).read_text()
     runtime_source = Path(runtime_module.__file__).read_text()

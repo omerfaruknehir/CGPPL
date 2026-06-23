@@ -1,12 +1,10 @@
 # Mutation target direct runtime wiring
 
-Delete-target and annotation-target structured diagnostics are currently functional, but they are installed through runtime adapter modules during package initialization.
+Delete-target and annotation-target structured diagnostics are now wired directly in `src/cgppl/runtime.py`.
 
-This cleanup slice should make `src/cgppl/runtime.py` the canonical dispatcher for mutation-target diagnostics.
+## Direct wiring
 
-## Direct wiring contract
-
-`src/cgppl/runtime.py` should import and call these helpers directly:
+`src/cgppl/runtime.py` imports and calls these helpers directly:
 
 ```python
 format_missing_delete_node_target_failure
@@ -21,7 +19,7 @@ format_missing_unset_node_label_target_failure
 format_missing_unset_edge_label_target_failure
 ```
 
-The direct wiring should cover these statement handlers:
+The direct wiring covers these statement handlers:
 
 ```text
 DeleteNodeStmt
@@ -36,11 +34,11 @@ UnsetNodeLabelStmt
 UnsetEdgeLabelStmt
 ```
 
-After the direct wiring lands, package initialization should no longer import or call adapter installers, and these adapter modules should be deleted:
+Package initialization no longer imports or calls mutation-target adapter installers, and the adapter modules have been deleted:
 
 ```text
 src/cgppl/runtime_delete_target_wiring.py
 src/cgppl/runtime_annotation_target_wiring.py
 ```
 
-The `tests/test_runtime_mutation_target_direct_wiring.py` regression contract is intentionally marked `xfail` until this cleanup is complete.
+The `tests/test_runtime_mutation_target_direct_wiring.py` regression contract is now enabled.

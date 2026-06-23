@@ -53,6 +53,16 @@ from .runtime_diagnostics import (
     format_forbidden_node_failure,
     format_match_edge_failure,
     format_match_node_failure,
+    format_missing_delete_edge_target_failure,
+    format_missing_delete_node_target_failure,
+    format_missing_set_edge_attr_target_failure,
+    format_missing_set_edge_label_target_failure,
+    format_missing_set_node_attr_target_failure,
+    format_missing_set_node_label_target_failure,
+    format_missing_unset_edge_attr_target_failure,
+    format_missing_unset_edge_label_target_failure,
+    format_missing_unset_node_attr_target_failure,
+    format_missing_unset_node_label_target_failure,
     format_required_edge_attr_failure,
     format_required_edge_failure,
     format_required_edge_label_failure,
@@ -211,12 +221,12 @@ def _execute_statement(
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if graph.has_node(node_id):
             return _ExecutionState(graph.remove_node(node_id), state.bindings)
-        raise GraphMatchFailed(f"delete node target not found: {node_id} in rule {_location(call_stack)}")
+        raise GraphMatchFailed(format_missing_delete_node_target_failure(statement, call_stack))
     if isinstance(statement, DeleteEdgeStmt):
         edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
         if graph.has_edge(edge_id):
             return _ExecutionState(graph.remove_edge(edge_id), state.bindings)
-        raise GraphMatchFailed(f"delete edge target not found: {edge_id} in rule {_location(call_stack)}")
+        raise GraphMatchFailed(format_missing_delete_edge_target_failure(statement, call_stack))
     if isinstance(statement, AddNodeStmt):
         node_id, current = _resolve_construction_ref(statement.node_id, state, "node", call_stack)
         attrs = _attrs_from_predicates(statement.attrs)
@@ -252,7 +262,7 @@ def _execute_statement(
     if isinstance(statement, SetNodeAttrStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if not graph.has_node(node_id):
-            raise GraphMatchFailed(f"set node target not found: {node_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_missing_set_node_attr_target_failure(statement, call_stack))
         return _ExecutionState(
             graph.replace_node(graph.get_node(node_id).with_attr(statement.attr_name, statement.value)),
             state.bindings,
@@ -260,7 +270,7 @@ def _execute_statement(
     if isinstance(statement, SetEdgeAttrStmt):
         edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
         if not graph.has_edge(edge_id):
-            raise GraphMatchFailed(f"set edge target not found: {edge_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_missing_set_edge_attr_target_failure(statement, call_stack))
         return _ExecutionState(
             graph.replace_edge(graph.get_edge(edge_id).with_attr(statement.attr_name, statement.value)),
             state.bindings,
@@ -268,17 +278,17 @@ def _execute_statement(
     if isinstance(statement, SetNodeLabelStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if not graph.has_node(node_id):
-            raise GraphMatchFailed(f"set node target not found: {node_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_missing_set_node_label_target_failure(statement, call_stack))
         return _ExecutionState(graph.replace_node(graph.get_node(node_id).with_label(statement.label)), state.bindings)
     if isinstance(statement, SetEdgeLabelStmt):
         edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
         if not graph.has_edge(edge_id):
-            raise GraphMatchFailed(f"set edge target not found: {edge_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_missing_set_edge_label_target_failure(statement, call_stack))
         return _ExecutionState(graph.replace_edge(graph.get_edge(edge_id).with_label(statement.label)), state.bindings)
     if isinstance(statement, UnsetNodeAttrStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if not graph.has_node(node_id):
-            raise GraphMatchFailed(f"unset node target not found: {node_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_missing_unset_node_attr_target_failure(statement, call_stack))
         return _ExecutionState(
             graph.replace_node(graph.get_node(node_id).without_attr(statement.attr_name)),
             state.bindings,
@@ -286,7 +296,7 @@ def _execute_statement(
     if isinstance(statement, UnsetEdgeAttrStmt):
         edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
         if not graph.has_edge(edge_id):
-            raise GraphMatchFailed(f"unset edge target not found: {edge_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_missing_unset_edge_attr_target_failure(statement, call_stack))
         return _ExecutionState(
             graph.replace_edge(graph.get_edge(edge_id).without_attr(statement.attr_name)),
             state.bindings,
@@ -294,12 +304,12 @@ def _execute_statement(
     if isinstance(statement, UnsetNodeLabelStmt):
         node_id = _resolve_ref(statement.node_id, state.bindings, "node", call_stack)
         if not graph.has_node(node_id):
-            raise GraphMatchFailed(f"unset node target not found: {node_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_missing_unset_node_label_target_failure(statement, call_stack))
         return _ExecutionState(graph.replace_node(graph.get_node(node_id).without_label(statement.label)), state.bindings)
     if isinstance(statement, UnsetEdgeLabelStmt):
         edge_id = _resolve_ref(statement.edge_id, state.bindings, "edge", call_stack)
         if not graph.has_edge(edge_id):
-            raise GraphMatchFailed(f"unset edge target not found: {edge_id} in rule {_location(call_stack)}")
+            raise GraphMatchFailed(format_missing_unset_edge_label_target_failure(statement, call_stack))
         return _ExecutionState(graph.replace_edge(graph.get_edge(edge_id).without_label(statement.label)), state.bindings)
     if isinstance(statement, CallStmt):
         return _execute_rule(statement.name, rules, state, call_stack=call_stack)
@@ -517,7 +527,6 @@ def _match_edge_candidate(
 ) -> _BindOutcome:
     if not _edge_constraints_match(edge, statement.labels, statement.attrs):
         return _BindOutcome(False, state)
-
     current = state
     if statement.source_id is not None:
         source = _try_match_ref(statement.source_id, edge.source, current)
