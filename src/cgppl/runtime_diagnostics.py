@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 
 from .ast import (
+    AddEdgeStmt,
+    AddNodeStmt,
     AttrPredicate,
     DeleteEdgeStmt,
     DeleteNodeStmt,
@@ -326,6 +328,32 @@ def format_missing_unset_edge_label_target_failure(
     )
 
 
+def format_add_node_failure(
+    statement: AddNodeStmt,
+    message: str,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed add-node graph construction precondition."""
+
+    return _format_add_failure("node", statement.node_id, message, call_stack)
+
+
+def format_add_edge_failure(
+    statement: AddEdgeStmt,
+    message: str,
+    call_stack: tuple[str, ...],
+) -> str:
+    """Format a failed add-edge graph construction precondition."""
+
+    return _format_add_failure("edge", statement.edge_id, message, call_stack)
+
+
+def format_add_edge_endpoint_failure(message: str, call_stack: tuple[str, ...]) -> str:
+    """Format a failed opt-in add-edge endpoint auto-creation precondition."""
+
+    return f"add edge endpoint failed: {message} in rule {format_rule_location(call_stack)}"
+
+
 def format_unbound_where_variable_failure(expr: VarExpr, call_stack: tuple[str, ...]) -> str:
     """Format an unbound variable used while evaluating a where predicate."""
 
@@ -364,3 +392,12 @@ def _format_missing_annotation_target_failure(
     if constraints:
         target = f"{target} with {', '.join(constraints)}"
     return f"missing {action} target for {target} in rule {format_rule_location(call_stack)}"
+
+
+def _format_add_failure(
+    kind: str,
+    ref: GraphRef,
+    message: str,
+    call_stack: tuple[str, ...],
+) -> str:
+    return f"add {kind} {format_graph_ref(ref)} failed: {message} in rule {format_rule_location(call_stack)}"
