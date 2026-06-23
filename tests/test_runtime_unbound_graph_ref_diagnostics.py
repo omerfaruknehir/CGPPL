@@ -1,5 +1,3 @@
-import pytest
-
 from cgppl.ast import VarRef
 from cgppl.runtime_diagnostics import format_unbound_graph_ref_failure
 
@@ -10,7 +8,6 @@ def test_formats_unbound_graph_ref_failure():
     )
 
 
-@pytest.mark.xfail(reason="_resolve_ref still emits the unbound graph-ref diagnostic directly")
 def test_runtime_resolves_unbound_graph_refs_through_helper():
     runtime_source = open("src/cgppl/runtime.py", encoding="utf-8").read()
 
