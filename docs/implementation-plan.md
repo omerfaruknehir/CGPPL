@@ -252,9 +252,9 @@ Implementation status:
 4. Done: the direct-wiring regression contract was enabled.
 5. Done: CI passed and the direct mutation-target runtime wiring cleanup was merged.
 
-## Next feature slice: construction failure structured diagnostics
+## In-progress feature slice: construction failure structured diagnostics
 
-The next useful diagnostics slice is construction-time failure cleanup. `AddNodeStmt`, `AddEdgeStmt`, and opt-in endpoint auto-creation still wrap `GraphError` with direct runtime strings instead of routing through `src/cgppl/runtime_diagnostics.py`.
+This slice routes construction-time failures toward the same runtime diagnostic helper layer used by predicate and mutation failures. `AddNodeStmt`, `AddEdgeStmt`, and opt-in endpoint auto-creation still need direct runtime wiring.
 
 Target diagnostic shape:
 
@@ -264,6 +264,14 @@ add edge $edge failed: edge edge references missing target node: missing in rule
 add edge endpoint failed: duplicate node id: source in rule main
 ```
 
+Implementation status:
+
+1. Done: added formatter helpers for add-node construction failures, add-edge construction failures, and add-edge endpoint auto-create failures.
+2. Done: unit tests cover helper output for literal and variable construction targets.
+3. Done: added xfail runtime regression coverage documenting the intended construction failure messages.
+4. Done: added `docs/construction-diagnostics.md` describing this slice.
+5. Pending: wire `AddNodeStmt`, `AddEdgeStmt`, and `_resolve_endpoint_ref` GraphError wrappers in `src/cgppl/runtime.py` to the helpers.
+
 Next concrete code step:
 
-- Add formatter helpers for `AddNodeStmt`, `AddEdgeStmt`, and endpoint auto-create failures in `src/cgppl/runtime_diagnostics.py`, add unit coverage for those helpers, then wire the `GraphError` wrappers in `src/cgppl/runtime.py` to the helpers and update stale construction failure expectations.
+- Import `format_add_node_failure`, `format_add_edge_failure`, and `format_add_edge_endpoint_failure` in `src/cgppl/runtime.py`; replace the direct construction `GraphError` wrappers; remove xfail markers from `tests/test_runtime_structured_construction_diagnostics.py`; update stale tests that expect `add node failed:` or `add edge failed:` direct strings.
