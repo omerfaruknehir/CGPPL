@@ -1,4 +1,6 @@
 from cgppl.ast import (
+    AddEdgeStmt,
+    AddNodeStmt,
     AttrExpr,
     AttrPredicate,
     DeleteEdgeStmt,
@@ -28,6 +30,9 @@ from cgppl.ast import (
     WherePredicate,
 )
 from cgppl.runtime_diagnostics import (
+    format_add_edge_endpoint_failure,
+    format_add_edge_failure,
+    format_add_node_failure,
     format_forbidden_edge_failure,
     format_forbidden_node_failure,
     format_match_edge_failure,
@@ -236,6 +241,30 @@ def test_formats_missing_unset_edge_label_target_failure():
 
     assert format_missing_unset_edge_label_target_failure(statement, ("main",)) == (
         'missing unset target for edge $e with label "selected" in rule main'
+    )
+
+
+def test_formats_add_node_failure():
+    statement = AddNodeStmt("existing")
+
+    assert format_add_node_failure(statement, "duplicate node id: existing", ("main",)) == (
+        'add node "existing" failed: duplicate node id: existing in rule main'
+    )
+
+
+def test_formats_add_edge_failure_with_variable_target():
+    statement = AddEdgeStmt(VarRef("edge"), "source", "missing")
+
+    assert format_add_edge_failure(
+        statement,
+        "edge edge references missing target node: missing",
+        ("main", "helper"),
+    ) == 'add edge $edge failed: edge edge references missing target node: missing in rule main -> helper'
+
+
+def test_formats_add_edge_endpoint_failure():
+    assert format_add_edge_endpoint_failure("duplicate node id: source", ("main",)) == (
+        "add edge endpoint failed: duplicate node id: source in rule main"
     )
 
 
